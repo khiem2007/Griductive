@@ -65,7 +65,7 @@ Griductive/
 ├── AGENTS.md                  # Quy ước và phạm vi triển khai
 ├── README.md                  # Yêu cầu, cách chạy, cấu trúc và tiến độ
 ├── requirements.txt           # pygame-ce>=2.5,<3
-├── main.py                    # CLI, nạp puzzle tùy chọn, khởi tạo Engine và GUI
+├── main.py                    # CLI, danh sách màn, nạp puzzle, khởi tạo Engine và GUI
 ├── core/
 │   ├── __init__.py
 │   ├── models.py              # Dataclass, enum, protocol, đọc/kiểm tra JSON
@@ -85,6 +85,7 @@ Griductive/
 │   ├── __init__.py
 │   ├── test_manual_game.py    # 6 test Engine, referee, bảo vệ dữ liệu
 │   ├── test_gui.py            # 7 test GUI headless và điều phối theo chế độ
+│   ├── test_level_selection.py # 7 test chọn/đổi màn, phân trang và khởi động
 │   ├── test_solver_skeletons.py # 3 test import/khung giao diện
 │   └── verify_puzzles.py      # 4 test xác minh Step 1, chạy riêng khi cần
 └── generate_puzzles.py        # Tệp di sản Step 1, không dùng trong luồng hiện tại
@@ -93,6 +94,8 @@ Griductive/
 ### 3.1. Trách nhiệm và luồng dữ liệu
 
 ```text
+puzzles/*.json -> tên file (chưa đọc nội dung) -> Chọn màn chơi -> Chơi
+                                                               |
 Puzzle JSON -> load_puzzle() -> Puzzle đã kiểm tra -> GameEngine
                                                      |
                                               get_public_state()
@@ -120,7 +123,15 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-Ứng dụng mở màn hình chưa có puzzle. Có thể nạp ngay puzzle có sẵn:
+Ứng dụng mở màn hình **Chọn màn chơi** và tự liệt kê các file `.json` nằm trực tiếp trong thư mục `puzzles/` cạnh `main.py`. Tên màn là tên file bỏ đuôi `.json`, sắp xếp theo tên; không đọc hay kiểm tra nội dung file cho đến khi bấm **Chơi**. Thư mục con không được quét. Chọn một tên rồi bấm **Chơi** để bắt đầu; dùng **Trang trước/Trang sau**, cuộn chuột hoặc phím trái/phải (`Page Up`/`Page Down`) nếu có nhiều màn.
+
+Thư mục puzzle được xác định từ vị trí `main.py`, nên chạy từ thư mục khác vẫn tìm đúng danh sách, ví dụ:
+
+```powershell
+python "C:\duong dan\Griductive\main.py"
+```
+
+Nếu `puzzles/` chưa tồn tại hoặc đang trống, màn hình hiển thị: **“Thêm file JSON vào thư mục puzzles/ hoặc chọn Mở file JSON”**. Có thể mở thẳng puzzle bằng tham số dòng lệnh:
 
 ```powershell
 python main.py puzzles/3x3_easy.json
@@ -136,14 +147,15 @@ Trên Windows có nhiều Python, dùng cùng một interpreter cho cả cài đ
 
 ### Thao tác trong game
 
-1. Nhấn **Load** để chọn JSON ở bất kỳ thư mục nào. Bộ chọn file chạy trong tiến trình con. Nếu không mở được hộp thoại, nhập đường dẫn trong ứng dụng, nhấn `Enter` để nạp hoặc `Esc` để hủy.
+1. Trong **Chọn màn chơi**, chọn tên màn và bấm **Chơi** (hoặc `Enter`). Có thể nhấn **Mở file JSON** để chọn JSON ở bất kỳ thư mục nào. Bộ chọn file chạy trong tiến trình con. Nếu không mở được hộp thoại, nhập đường dẫn trong ứng dụng, nhấn `Enter` để nạp hoặc `Esc` để hủy.
 2. Chọn một thẻ úp rồi nhấn **CRIMINAL** hoặc **INNOCENT**.
 3. Đúng đáp án: mở đúng thẻ vừa chọn và hiện clue. Sai đáp án: báo `WRONG`, giữ thẻ úp và cho thử lại.
 4. Chọn thẻ đã mở để highlight các ô liên quan; vùng chi tiết bên phải hiển thị clue được chọn, hữu ích trên bàn 5×5.
 5. Nhấn **Restart** để khôi phục đúng tập thẻ mở ban đầu. Khi tất cả thẻ mở, game báo hoàn thành.
 6. **Hint** và **Auto Solve** đang bị vô hiệu hóa, chờ triển khai và kết nối Agent.
+7. Trong ván, nhấn **Chọn màn** để trở lại danh sách và quét lại thư mục, nhận các file mới. Chọn màn khác và bấm **Chơi** để bắt đầu ván mới. **Tiếp tục ván** quay về ván đang giữ trong bộ nhớ. **Restart** luôn khôi phục đúng các thẻ `revealed` của màn đã nạp thành công gần nhất.
 
-Hủy nạp hoặc nạp file lỗi giữ nguyên ván đang chơi. Game không sửa nội dung file puzzle. Thư mục `puzzles` rỗng vẫn là trạng thái khởi động được hỗ trợ; các test dùng puzzle mẫu hiện tại cần giữ file mẫu đó.
+Hủy nạp hoặc nạp file lỗi/đã bị xóa giữ nguyên ván đang chơi. Thông báo lỗi nêu tên file; bạn có thể chọn màn khác hoặc **Tiếp tục ván**. Chỉ thay bàn sau khi loader kiểm tra thành công toàn bộ file. Đường dẫn JSON hợp lệ trên dòng lệnh bỏ qua màn hình chọn màn; đường dẫn lỗi trở về màn hình chọn màn kèm thông báo. Game chỉ đọc puzzle, không sinh màn hoặc lưu đè tiến trình vào JSON. Các test dùng puzzle mẫu hiện tại cần giữ file mẫu đó.
 
 ## 5. Hợp đồng dữ liệu puzzle JSON
 
@@ -200,7 +212,7 @@ Mọi clue có `id` duy nhất và trường `type`.
 3. Mỗi ô phải có đủ `id`, `name`, `job`, `status`, `revealed`, `clue`; tên/nghề là chuỗi không rỗng, `revealed` là Boolean, trạng thái chỉ là `CRIMINAL` hoặc `INNOCENT`.
 4. Đặt ID ô và ID clue không trùng; mọi tọa độ và vùng phải nằm trong bàn. Với clue đếm, `k` là số nguyên từ `0` đến số ô trong vùng.
 5. Viết clue đúng dưới toàn bộ đáp án đã khai báo; chọn tập thẻ mở ban đầu phù hợp để suy luận. Theo đề, chuẩn bị tên nhân vật theo thứ tự bảng chữ cái; loader hiện chuẩn hóa theo tọa độ, không kiểm tra thứ tự tên.
-6. Lưu JSON UTF-8 và nạp bằng **Load** hoặc tham số dòng lệnh. Loader từ chối trường thiếu/thừa, sai kiểu, tọa độ không hợp lệ, ID trùng và clue sai theo đáp án.
+6. Lưu JSON UTF-8 vào `puzzles/`, quay lại **Chọn màn** để cập nhật danh sách; hoặc dùng **Mở file JSON** hay tham số dòng lệnh. Loader từ chối trường thiếu/thừa, sai kiểu, tọa độ không hợp lệ, ID trùng và clue sai theo đáp án.
 
 Loader dùng `evaluate_clue_directly()` để kiểm tra từng clue trên **một đáp án được cung cấp**, không liệt kê mọi phép gán. Nạp thành công chưa chứng minh puzzle có nghiệm duy nhất hoặc giải được từng bước không đoán.
 
@@ -231,7 +243,7 @@ Loader dùng `evaluate_clue_directly()` để kiểm tra từng clue trên **m�
 - **Tích hợp GUI**: sau khi Agent hoạt động, nối Hint/Auto Solve, cập nhật hiển thị theo chế độ, trace và các trạng thái kết thúc.
 - **Hoàn thiện bài nộp**: bổ sung puzzle do người dùng chuẩn bị cho thực nghiệm, kiểm thử thuật toán, đo thống kê, viết báo cáo và quay video.
 
-Điểm tích hợp referee nằm ở chỗ tạo Engine trong `main.py`, hiện là `GameEngine(puzzle=None, referee=None)`. Khi `LogicAgent.judge()` hoàn thiện, có thể inject như sau:
+Điểm tích hợp referee nằm trong `create_app()` của `main.py`, hiện là `GameEngine(puzzle=None, referee=None)`. Khi `LogicAgent.judge()` hoàn thiện, có thể inject như sau:
 
 ```python
 from solver.agent import LogicAgent
@@ -249,7 +261,7 @@ Chạy từ thư mục gốc `Griductive`:
 python -m unittest discover -s tests -v
 ```
 
-Lệnh trên chạy 16 test trong các tệp `test_*.py`. Các test GUI tự đặt `SDL_VIDEODRIVER=dummy`, không mở cửa sổ tương tác.
+Lệnh trên chạy 23 test trong các tệp `test_*.py`. Các test GUI tự đặt `SDL_VIDEODRIVER=dummy`, không mở cửa sổ tương tác. Trong đó, 7 test mới ở `test_level_selection.py` dùng file JSON fixture tạm để kiểm tra chọn màn thứ hai rồi quay lại màn thứ nhất, Restart, quét lại, thư mục trống/thiếu, file lỗi/đã xóa, duyệt 30 màn qua các trang, mở file ngoài danh sách và CLI từ thư mục khác. Fixture được dọn sau test, không ghi vào `puzzles/` thật.
 
 Verifier Step 1 là lệnh tùy chọn, chạy riêng:
 
@@ -265,7 +277,7 @@ Môi trường kiểm chứng: Windows, Python **3.12.10**, module Pygame **2.6.
 
 | Lệnh thực tế | Kết quả |
 | --- | --- |
-| `py -3.12 -B -m unittest discover -s tests -v` | **16/16 đạt**: 6 Engine + 7 GUI + 3 khung solver |
+| `py -3.12 -B -m unittest discover -s tests -v` | **23/23 đạt**: 6 Engine + 7 GUI + 7 chọn màn + 3 khung solver |
 | `py -3.12 -B -m tests.verify_puzzles` | **4/4 đạt** với dữ liệu hiện có |
 | `py -3.12 -B -m core.engine` | Thành công, kiểm tra khởi tạo Engine với puzzle mẫu |
 | `py -3.12 -B -m solver.dpll` | Thành công, smoke test kiểu dữ liệu và khung `solve()` |
@@ -273,12 +285,14 @@ Môi trường kiểm chứng: Windows, Python **3.12.10**, module Pygame **2.6.
 | `py -3.12 -B -m solver.agent` | Thành công, smoke test kiểu dữ liệu và khung Agent |
 | `py -3.12 -B main.py --help` | Thành công, hiển thị tham số puzzle tùy chọn |
 
-Lần chạy đầu trong sandbox có một lỗi quyền ghi file tạm ở test JSON hỏng. Chạy lại cùng bộ 16 test ngoài sandbox đạt toàn bộ, không sửa mã nguồn. Các smoke test solver chỉ xác nhận giao diện import được và hành vi khung đúng dự kiến, **không chứng minh thuật toán hoạt động**.
+Sandbox Windows chặn quyền truy cập thư mục fixture tạm. Chạy lại bộ 23 test ngoài sandbox đạt toàn bộ. Các smoke test solver chỉ xác nhận giao diện import được và hành vi khung đúng dự kiến, **không chứng minh thuật toán hoạt động**.
 
 ### 7.2. Phạm vi đã kiểm chứng
 
 - **Với file thật `puzzles/3x3_easy.json`**: nạp bằng loader; Engine trả lời sai/đúng, gửi lại ô đã mở, Restart và mở hết bàn; GUI headless điều phối sai rồi đúng, chọn lặp lại, highlight clue và nhánh referee giả lập.
 - **Với file JSON hỏng tạm thời**: GUI gọi loader thật giữa ván và giữ nguyên trạng thái khi nạp lỗi.
+- **Với file fixture tạm và loader thật**: chọn màn thứ hai 4×4, quay lại màn thứ nhất 3×3 và Restart; thư mục trống/thiếu; JSON hỏng, sai schema và file bị xóa cạnh file hợp lệ; quét lại thấy file mới; phân trang qua 30 tên; mở file ngoài danh sách, hủy và nhập đường dẫn dự phòng. Test CLI chạy từ thư mục khác xác nhận tìm đúng `puzzles/` cạnh `main.py`, mở thẳng file hợp lệ và hiển thị lỗi khi đường dẫn sai.
+- **Ảnh render headless**: đã kiểm tra bố cục màn chọn với puzzle thật `3x3_easy.json`, trạng thái thư mục trống và bàn chơi; font ưu tiên Tahoma/DejaVu Sans để hiển thị tiếng Việt. Đây là kiểm tra ảnh render, không phải thao tác trực tiếp với cửa sổ hệ điều hành.
 - **Với fixture trong bộ nhớ/callback giả lập**: màn hình trống; nạp bàn thứ hai, hủy/đường dẫn lỗi; vẽ bàn 3×3, 4×4, 5×5, nhận click tổng hợp và chạy một frame. Chưa có file puzzle thật 4×4/5×5 để kiểm chứng nạp đầu cuối.
 - **Ranh giới dữ liệu**: test dùng tiến trình Python mới xác nhận sau một nước chơi thủ công không có `solver`/`solver.*` trong `sys.modules`; hash puzzle không đổi. Referee giả lập kiểm tra từ chối, timeout/lỗi, gọi sai chế độ và thẻ đã mở không gọi `judge()`.
 - **Chưa kiểm chứng trực quan trong lần rà soát này**: cửa sổ GUI thật, hộp thoại chọn file của hệ điều hành, nhập đường dẫn qua bàn phím, khả năng đọc đủ clue rất dài trên màn hình nhỏ. Code hiện ngắt vẽ chi tiết khi hết chiều cao panel; cần kiểm tra thêm với clue dài.

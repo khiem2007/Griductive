@@ -16,6 +16,7 @@ from core.regions import cell_ids, clue_cells, describe_clue
 
 Color = tuple[int, int, int]
 LoadCallback = Callable[[str], None]
+LevelListCallback = Callable[[], tuple[str, ...]]
 
 _BACKGROUND: Color = (20, 25, 38)
 _PANEL: Color = (31, 39, 58)
@@ -64,6 +65,9 @@ class GriductiveApp:
         load_puzzle: LoadCallback,
         initial_message: str = "Load a puzzle JSON file to begin.",
         window_size: tuple[int, int] = (1280, 820),
+        list_levels: LevelListCallback | None = None,
+        load_level: LoadCallback | None = None,
+        initial_level_name: str | None = None,
     ) -> None:
         pygame.init()
         pygame.display.set_caption("Griductive — Manual practice — answer check")
@@ -81,11 +85,41 @@ class GriductiveApp:
         self._buttons: dict[str, pygame.Rect] = {}
         self._path_entry_active = False
         self._path_text = ""
-        self._title_font = pygame.font.SysFont("arial", 28, bold=True)
-        self._heading_font = pygame.font.SysFont("arial", 20, bold=True)
-        self._body_font = pygame.font.SysFont("arial", 17)
-        self._small_font = pygame.font.SysFont("arial", 14)
-        self._tiny_font = pygame.font.SysFont("arial", 12)
+        # Prefer fonts with Vietnamese glyphs; Arial may resolve to Arial Narrow.
+        font_names = ("tahoma", "dejavusans", "liberationsans", "arial")
+        self._title_font = pygame.font.SysFont(font_names, 28, bold=True)
+        self._heading_font = pygame.font.SysFont(font_names, 20, bold=True)
+        self._body_font = pygame.font.SysFont(font_names, 17)
+        self._small_font = pygame.font.SysFont(font_names, 14)
+        self._tiny_font = pygame.font.SysFont(font_names, 12)
+        self._list_levels = list_levels
+        self._load_level = load_level
+        self._level_names: tuple[str, ...] = ()
+        self._selected_level: str | None = None
+        self._level_page = 0
+        self._level_rects: dict[str, pygame.Rect] = {}
+        self._current_level_name = initial_level_name
+        self._choosing_level = not bool(game.get_public_state().size)
+        if self._choosing_level:
+            self._refresh_levels()
+
+    @property
+    def choosing_level(self) -> bool:
+        """Return whether the level selector is visible."""
+
+        return self._choosing_level
+
+    @property
+    def level_names(self) -> tuple[str, ...]:
+        """Return discovered display names without private puzzle data."""
+
+        return self._level_names
+
+    @property
+    def current_level_name(self) -> str | None:
+        """Return the name of the successfully loaded level."""
+
+        return self._current_level_name
 
     @property
     def selected_cell(self) -> str | None:
@@ -134,6 +168,19 @@ class GriductiveApp:
         if self._path_entry_active:
             self._handle_path_entry_event(event)
             return
+        if self._choosing_level:
+            if event.type == pygame.MOUSEWHEEL:
+                self._change_level_page(-event.y)
+            elif event.type == pygame.KEYDOWN:
+                if event.key in {pygame.K_LEFT, pygame.K_PAGEUP}:
+                    self._change_level_page(-1)
+                elif event.key in {pygame.K_RIGHT, pygame.K_PAGEDOWN}:
+                    self._change_level_page(1)
+                elif event.key == pygame.K_RETURN:
+                    self.play_selected_level()
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                self._handle_selector_click(event.pos)
+            return
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self._handle_click(event.pos)
 
@@ -141,6 +188,11 @@ class GriductiveApp:
         """Draw the complete current interface."""
 
         self._screen.fill(_BACKGROUND)
+        if self._choosing_level:
+            self._draw_level_selector()
+            if self._path_entry_active:
+                self._draw_path_entry()
+            return
         width, height = self._screen.get_size()
         side_width = 350
         side_left = width - side_width
@@ -164,13 +216,92 @@ class GriductiveApp:
         try:
             self._load_puzzle(path)
         except (OSError, ValueError, RuntimeError) as exc:
-            self._set_message(f"Load failed: {exc}", _ERROR)
+            self._set_message(f"Không thể mở {Path(path).name}: {exc}", _ERROR)
             return False
+        self._enter_loaded_game(Path(path).stem)
+        self._set_message(f"Loaded {Path(path).name}.", _SUCCESS)
+        return True
+
+    def show_level_selector(self) -> None:
+        """Rescan available names while retaining the current game in memory."""
+
+        self._choosing_level = True
+        self._buttons.clear()
+        self._card_rects.clear()
+        self._set_message("Chọn một màn rồi bấm Chơi.", _MUTED)
+        self._refresh_levels()
+
+    def select_level(self, name: str) -> None:
+        """Select a catalog name without reading its JSON file."""
+
+        if name not in self._level_names:
+            raise ValueError("unknown level name")
+        self._selected_level = name
+
+    def play_selected_level(self) -> bool:
+        """Load the selected level lazily and keep the old game on failure."""
+
+        name = self._selected_level
+        if name is None or self._load_level is None:
+            self._set_message("Hãy chọn một màn chơi trong danh sách.", _MUTED)
+            return False
+        try:
+            self._load_level(name)
+        except (OSError, ValueError, RuntimeError) as exc:
+            self._set_message(f"Không thể mở {name}.json: {exc}", _ERROR)
+            return False
+        self._enter_loaded_game(name)
+        self._set_message(f"Đã mở màn {name}.", _SUCCESS)
+        return True
+
+    def _enter_loaded_game(self, name: str) -> None:
+        self._choosing_level = False
+        self._current_level_name = name
+        self._buttons.clear()
+        self._level_rects.clear()
         self._selected_cell = None
         self._active_clue_cell = None
         self._highlighted_cells.clear()
-        self._set_message(f"Loaded {Path(path).name}.", _SUCCESS)
-        return True
+
+    def _refresh_levels(self) -> None:
+        self._selected_level = None
+        self._level_page = 0
+        self._level_rects.clear()
+        try:
+            self._level_names = self._list_levels() if self._list_levels else ()
+        except OSError:
+            self._level_names = ()
+            self._set_message("Không đọc được thư mục puzzles/. Bạn vẫn có thể Mở file JSON.", _ERROR)
+
+    def _levels_per_page(self) -> int:
+        return max(1, (self._screen.get_height() - 300) // 52)
+
+    def _change_level_page(self, delta: int) -> None:
+        last_page = max(0, (len(self._level_names) - 1) // self._levels_per_page())
+        self._level_page = max(0, min(last_page, self._level_page + delta))
+        self._level_rects.clear()
+
+    def _handle_selector_click(self, position: tuple[int, int]) -> None:
+        for name, rect in self._level_rects.items():
+            if rect.collidepoint(position):
+                self.select_level(name)
+                return
+        for key, rect in self._buttons.items():
+            if not rect.collidepoint(position):
+                continue
+            if key == "load":
+                self._request_load()
+            elif key == "play":
+                self.play_selected_level()
+            elif key == "previous":
+                self._change_level_page(-1)
+            elif key == "next":
+                self._change_level_page(1)
+            elif key == "resume" and self._game.get_public_state().size:
+                self._choosing_level = False
+                self._buttons.clear()
+                self._level_rects.clear()
+            return
 
     def select_cell(self, cell_id: str) -> None:
         """Select a face-down card or activate a revealed clue."""
@@ -246,6 +377,9 @@ class GriductiveApp:
             self._set_message(result.value, _ERROR)
 
     def _handle_click(self, position: tuple[int, int]) -> None:
+        if self._buttons.get("levels", pygame.Rect(0, 0, 0, 0)).collidepoint(position):
+            self.show_level_selector()
+            return
         if self._buttons.get("load", pygame.Rect(0, 0, 0, 0)).collidepoint(position):
             self._request_load()
             return
@@ -327,7 +461,59 @@ class GriductiveApp:
         mode = self._body_font.render("Manual practice — answer check", True, _HIGHLIGHT)
         self._screen.blit(title, (28, 18))
         self._screen.blit(mode, (28, 52))
+        if self._current_level_name:
+            name = self._fit_text(self._current_level_name, self._body_font, side_left - 260)
+            self._screen.blit(self._body_font.render(name, True, _MUTED), (240, 29))
         pygame.draw.line(self._screen, _PANEL, (20, 78), (side_left - 20, 78), 2)
+
+    def _draw_level_selector(self) -> None:
+        width, height = self._screen.get_size()
+        self._card_rects.clear()
+        self._level_rects.clear()
+        title = self._title_font.render("Chọn màn chơi", True, _TEXT)
+        self._screen.blit(title, (40, 24))
+        instruction = (
+            "Chọn tên màn rồi bấm Chơi. Cuộn chuột hoặc dùng nút chuyển trang."
+            if self._level_names else
+            "Thêm file JSON vào thư mục puzzles/ hoặc chọn Mở file JSON"
+        )
+        self._screen.blit(self._body_font.render(instruction, True, _MUTED), (40, 70))
+        self._change_level_page(0)
+        per_page = self._levels_per_page()
+        start = self._level_page * per_page
+        for index, name in enumerate(self._level_names[start:start + per_page]):
+            rect = pygame.Rect(40, 110 + index * 52, width - 80, 44)
+            self._level_rects[name] = rect
+            pygame.draw.rect(self._screen, _PANEL, rect, border_radius=8)
+            if name == self._selected_level:
+                pygame.draw.rect(self._screen, _ACCENT, rect, 2, border_radius=8)
+            label = self._fit_text(name, self._heading_font, rect.width - 30)
+            self._screen.blit(self._heading_font.render(label, True, _TEXT), (rect.x + 15, rect.y + 10))
+
+        self._buttons = {
+            "previous": pygame.Rect(40, height - 218, 130, 40),
+            "next": pygame.Rect(180, height - 218, 130, 40),
+            "load": pygame.Rect(40, height - 158, 240, 44),
+            "play": pygame.Rect(width - 260, height - 158, 220, 44),
+        }
+        pages = max(1, (len(self._level_names) + per_page - 1) // per_page)
+        self._draw_button("previous", "Trang trước", self._level_page > 0)
+        self._draw_button("next", "Trang sau", self._level_page + 1 < pages)
+        label = f"Trang {self._level_page + 1}/{pages} · {len(self._level_names)} màn"
+        self._screen.blit(self._body_font.render(label, True, _MUTED), (330, height - 208))
+        self._draw_button("load", "Mở file JSON", True)
+        self._draw_button("play", "Chơi", self._selected_level is not None)
+        if self._game.get_public_state().size:
+            self._buttons["resume"] = pygame.Rect(width - 500, height - 158, 220, 44)
+            self._draw_button("resume", "Tiếp tục ván", True)
+        lines = self._wrap_text(self._message, self._body_font, width - 80)
+        for index, line in enumerate(lines[:3]):
+            if index == 2 and len(lines) > 3:
+                line = self._fit_text(line + " …", self._body_font, width - 80)
+            self._screen.blit(
+                self._body_font.render(line, True, self._message_color),
+                (40, height - 90 + index * 22),
+            )
 
     def _draw_empty_state(self, side_left: int, height: int) -> None:
         area = pygame.Rect(30, 105, side_left - 60, height - 150)
@@ -434,12 +620,14 @@ class GriductiveApp:
         self._buttons = {
             "load": pygame.Rect(x, 62, (panel_width - 10) // 2, 42),
             "restart": pygame.Rect(x + (panel_width + 10) // 2, 62, (panel_width - 10) // 2, 42),
-            "criminal": pygame.Rect(x, 122, panel_width, 44),
-            "innocent": pygame.Rect(x, 176, panel_width, 44),
-            "hint": pygame.Rect(x, 238, (panel_width - 10) // 2, 40),
-            "auto": pygame.Rect(x + (panel_width + 10) // 2, 238, (panel_width - 10) // 2, 40),
+            "levels": pygame.Rect(x, 112, panel_width, 42),
+            "criminal": pygame.Rect(x, 172, panel_width, 44),
+            "innocent": pygame.Rect(x, 226, panel_width, 44),
+            "hint": pygame.Rect(x, 288, (panel_width - 10) // 2, 40),
+            "auto": pygame.Rect(x + (panel_width + 10) // 2, 288, (panel_width - 10) // 2, 40),
         }
-        self._draw_button("load", "Load", True)
+        self._draw_button("load", "Mở file JSON", True)
+        self._draw_button("levels", "Chọn màn", True)
         self._draw_button("restart", "Restart", bool(state.size))
         self._draw_button("criminal", "CRIMINAL", bool(state.size))
         self._draw_button("innocent", "INNOCENT", bool(state.size))
@@ -449,9 +637,9 @@ class GriductiveApp:
         disabled = self._small_font.render(
             "Hint and Auto Solve await LogicAgent.", True, _MUTED
         )
-        self._screen.blit(disabled, (x, 286))
+        self._screen.blit(disabled, (x, 336))
 
-        y = 322
+        y = 372
         label = self._small_font.render("Feedback", True, _MUTED)
         self._screen.blit(label, (x, y))
         y += 24
@@ -460,7 +648,7 @@ class GriductiveApp:
             self._screen.blit(surface, (x, y))
             y += 22
 
-        y = max(y + 20, 430)
+        y = max(y + 20, 480)
         detail_label = self._small_font.render("Selected revealed clue", True, _MUTED)
         self._screen.blit(detail_label, (x, y))
         y += 25
@@ -510,6 +698,14 @@ class GriductiveApp:
             "Enter: load    Esc: cancel", True, _MUTED
         )
         self._screen.blit(help_text, (box.x + 24, box.y + 130))
+
+    @staticmethod
+    def _fit_text(text: str, font: pygame.font.Font, width: int) -> str:
+        if font.size(text)[0] <= width:
+            return text
+        while text and font.size(text + "…")[0] > width:
+            text = text[:-1]
+        return text + "…"
 
     @staticmethod
     def _wrap_text(text: str, font: pygame.font.Font, width: int) -> list[str]:

@@ -23,27 +23,65 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> int:
-    """Create the engine, wire safe loading, and run the Pygame app."""
+def create_app(
+    initial_path: Path | None = None, puzzle_directory: Path | None = None
+) -> GriductiveApp:
+    """Wire lazy level discovery and validated loading without exposing answers."""
 
-    args = _parse_args()
+    directory = (
+        puzzle_directory if puzzle_directory is not None
+        else Path(__file__).resolve().parent / "puzzles"
+    )
     engine = GameEngine(puzzle=None, referee=None)
-    initial_message = "Load a puzzle JSON file to begin."
-    if args.puzzle is not None:
-        try:
-            engine.load(load_puzzle(args.puzzle))
-            initial_message = f"Loaded {args.puzzle.name}."
-        except ValueError as exc:
-            initial_message = f"Startup load failed: {exc}"
+    catalog: dict[str, Path] = {}
+
+    def list_levels() -> tuple[str, ...]:
+        if not directory.exists():
+            catalog.clear()
+            return ()
+        paths = sorted(
+            (path for path in directory.iterdir() if path.is_file() and path.suffix == ".json"),
+            key=lambda path: path.stem,
+        )
+        catalog.clear()
+        catalog.update((path.stem, path) for path in paths)
+        return tuple(catalog)
 
     def load_into_engine(path: str) -> None:
-        engine.load(load_puzzle(path))
+        source = Path(path)
+        if not source.is_file():
+            raise ValueError("Không tìm thấy file. Hãy chọn màn khác hoặc kiểm tra đường dẫn.")
+        # Validate completely before replacing the current game.
+        engine.load(load_puzzle(source))
 
-    app = GriductiveApp(
+    def load_level(name: str) -> None:
+        if name not in catalog:
+            raise ValueError("Màn chơi không còn trong danh sách. Hãy mở lại Chọn màn.")
+        load_into_engine(str(catalog[name]))
+
+    initial_message = "Chọn một màn rồi bấm Chơi."
+    if initial_path is not None:
+        try:
+            load_into_engine(str(initial_path))
+            initial_message = f"Loaded {initial_path.name}."
+        except ValueError as exc:
+            initial_message = f"Không thể mở {initial_path.name}: {exc}"
+
+    return GriductiveApp(
         game=engine,
         load_puzzle=load_into_engine,
         initial_message=initial_message,
+        list_levels=list_levels,
+        load_level=load_level,
+        initial_level_name=initial_path.stem if initial_path and engine.has_puzzle else None,
     )
+
+
+def main() -> int:
+    """Open the level selector, or directly play the optional JSON path."""
+
+    args = _parse_args()
+    app = create_app(args.puzzle)
     app.run()
     return 0
 

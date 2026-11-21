@@ -2,7 +2,39 @@ ROLE AND SCOPE
 Continue the existing Python 3.10+ CSC14003 project after completed Step 1. Inspect its interfaces first. Reuse core/models.py, core/regions.py, the clue evaluator and existing tests. Deliver the manual practice game in this prompt and stop. The student owns the automatic algorithms.
 All playable puzzles are authored and selected by the user. Remove puzzle generation from the workflow, launch path, documentation and dependencies. Leave any legacy Step 1 generator unused. Never generate or overwrite puzzle files. An empty puzzle directory is a supported starting state. Preserve all existing hand-written and Step 1 puzzle files. Keep the existing 3×3 verifier available as a separate, optional developer command.
 Launch and load
-Implement main.py, core/engine.py and gui/app.py with Pygame. From the project root, python main.py opens a playable GUI with a Load puzzle action. Accept an optional JSON path on the command line. Let the player select a file anywhere via tkinter or enter a path if the dialog is unavailable. Support 3×3, 4×4 and 5×5. Cancelling or loading malformed data preserves the current game. Report the invalid field without exposing hidden clues. Reuse the Step 1 loader if present. Otherwise put private loading and validation in core/engine.py. If tkinter is used on macOS, open the picker in a child process. Treat cancellation as a normal return. If the picker cannot start, offer path entry.
+
+Implement the Pygame entry point and level selector using the existing
+main.py, core/engine.py and gui/app.py.
+
+Running `python main.py` opens the “Chọn màn chơi” screen. Every JSON file
+directly inside the project's `puzzles/` directory represents one level.
+Locate this directory relative to main.py so discovery also works when
+the game is launched from another working directory.
+
+Each time the selector opens, automatically discover all `.json` files,
+sort them by filename, and display their filename stems as level names.
+Use pagination or a scrollable list if needed. If `puzzles/man_01.json` and
+`puzzles/man_02.json` exist, the player must see `man_01` and `man_02`
+immediately on startup. Clicking a level selects its name; pressing “Chơi”
+loads and starts that level. GUI catalog callbacks receive names only.
+
+Discover filenames first without reading JSON contents. On “Chơi”, use the existing
+Step 1 loader and validation to load that puzzle. Keep the current JSON
+schema and support 3×3, 4×4 and 5×5 boards. If the selected file is invalid
+or has been removed, show a readable error, keep the selector usable,
+and let the player choose another level. Preserve any current game until
+the new level loads successfully.
+
+Provide a “Chọn màn” action during play and after completion. Returning to
+the selector refreshes the list so newly added puzzle files appear.
+Restart resets only the current level.
+
+If `puzzles/` is missing or contains no JSON files, show an empty level
+list and the message “Thêm file JSON vào thư mục puzzles/ hoặc chọn Mở file JSON”.
+Keep “Mở file JSON” available for external files via a tkinter picker in a child
+process, with path entry if the picker is unavailable. Cancellation preserves
+the current game. Preserve the optional command-line JSON path for direct
+launch into a valid puzzle; on error, show the selector and failed filename.
 Manual practice rules
 Display coordinates, names and jobs. Start with exactly the cards marked revealed. Show each face-up status and clue. Clicking a revealed clue highlights all cells it refers to. Keep longer clue text readable on every board size. Wrap clue text and show the full selected clue in a readable detail area on a 5×5 board.
 The player chooses a face-down card and submits CRIMINAL or INNOCENT. In manual practice, the engine compares that choice with the stored status. A match flips just that card and reveals its clue. A mismatch gives feedback and leaves the board intact. Allow another attempt after a wrong answer. Reject submissions on an already revealed card. Restart restores the loaded board’s initial state. Announce completion when all cards are face-up.
