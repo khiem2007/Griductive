@@ -30,6 +30,14 @@ class MoveResult(str, Enum):
     TIMEOUT = "TIMEOUT"
 
 
+class ManualResult(str, Enum):
+    """Feedback from answer checking in manual practice mode."""
+
+    CORRECT = "CORRECT"
+    WRONG = "WRONG"
+    ALREADY_REVEALED = "ALREADY_REVEALED"
+
+
 class ClueType(str, Enum):
     """Supported structured clue templates."""
 
