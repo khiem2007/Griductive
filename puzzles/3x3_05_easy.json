@@ -3,83 +3,85 @@
   "cells": [
     {
       "id": "A1",
-      "name": "Amber",
-      "job": "Artist",
+      "name": "Alice",
+      "job": "Spy",
       "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "clue_A1",
+        "id": "c1",
+        "type": "FACT",
+        "cell": "A1",
+        "status": "INNOCENT"
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bob",
+      "job": "Guard",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "c2",
         "type": "EXACTLY",
         "region": {
-          "type": "ROW",
-          "index": 2
+          "type": "NEIGHBORS",
+          "of": "A1"
         },
         "k": 2
       }
     },
     {
-      "id": "B1",
-      "name": "Brian",
-      "job": "Barista",
-      "status": "CRIMINAL",
+      "id": "C1",
+      "name": "Charlie",
+      "job": "Chef",
+      "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "clue_B1",
-        "type": "EXACTLY",
-        "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "A1",
-            "B2"
-          ]
-        },
-        "k": 0
-      }
-    },
-    {
-      "id": "C1",
-      "name": "Chloe",
-      "job": "Curator",
-      "status": "INNOCENT",
-      "revealed": true,
-      "clue": {
-        "id": "clue_C1",
-        "type": "DIFFERENT",
+        "id": "c3",
+        "type": "SAME",
         "cells": [
-          "B1",
+          "A1",
           "C1"
         ]
       }
     },
     {
       "id": "A2",
-      "name": "Derek",
-      "job": "Driver",
+      "name": "David",
+      "job": "Doctor",
       "status": "CRIMINAL",
-      "revealed": false,
+      "revealed": true,
       "clue": {
-        "id": "clue_A2",
-        "type": "EXACTLY",
-        "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "A1",
-            "C1",
-            "A3",
-            "C3"
-          ]
-        },
-        "k": 1
+        "id": "c4",
+        "type": "FACT",
+        "cell": "B2",
+        "status": "INNOCENT"
       }
     },
     {
       "id": "B2",
-      "name": "Elena",
-      "job": "Editor",
+      "name": "Eve",
+      "job": "Pilot",
       "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "clue_B2",
+        "id": "c5",
+        "type": "EXACTLY",
+        "region": {
+          "type": "NEIGHBORS",
+          "of": "B2"
+        },
+        "k": 4
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Frank",
+      "job": "Lawyer",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "c6",
         "type": "SAME",
         "cells": [
           "A1",
@@ -88,74 +90,48 @@
       }
     },
     {
-      "id": "C2",
-      "name": "Felix",
-      "job": "Firefighter",
-      "status": "CRIMINAL",
-      "revealed": false,
-      "clue": {
-        "id": "clue_C2",
-        "type": "PARITY",
-        "region": {
-          "type": "ROW",
-          "index": 3
-        },
-        "parity": "EVEN"
-      }
-    },
-    {
       "id": "A3",
       "name": "Grace",
-      "job": "Gardener",
+      "job": "Artist",
       "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "clue_A3",
-        "type": "EXACTLY",
-        "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "A1",
-            "B1",
-            "C1",
-            "A2",
-            "C2",
-            "A3",
-            "B3",
-            "C3"
-          ]
-        },
-        "k": 5
+        "id": "c7",
+        "type": "SAME",
+        "cells": [
+          "A1",
+          "C3"
+        ]
       }
     },
     {
       "id": "B3",
-      "name": "Henry",
-      "job": "Hotelier",
+      "name": "Heidi",
+      "job": "Engineer",
       "status": "CRIMINAL",
-      "revealed": false,
+      "revealed": true,
       "clue": {
-        "id": "clue_B3",
+        "id": "c8",
         "type": "EXACTLY",
         "region": {
-          "type": "EXPLICIT",
-          "cells": []
+          "type": "NEIGHBORS",
+          "of": "C1"
         },
-        "k": 0
+        "k": 2
       }
     },
     {
       "id": "C3",
-      "name": "Irene",
-      "job": "Illustrator",
-      "status": "CRIMINAL",
+      "name": "Ivan",
+      "job": "Teacher",
+      "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "clue_C3",
-        "type": "AT_LEAST",
+        "id": "c9",
+        "type": "EXACTLY",
         "region": {
-          "type": "COL",
-          "col": "B"
+          "type": "NEIGHBORS",
+          "of": "A3"
         },
         "k": 2
       }

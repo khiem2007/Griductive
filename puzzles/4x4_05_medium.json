@@ -3,128 +3,189 @@
   "cells": [
     {
       "id": "A1",
-      "name": "Anya",
-      "job": "Student",
-      "status": "INNOCENT",
-      "revealed": true,
-      "clue": {
-        "id": "LEVEL_05_4X4-A1",
-        "type": "DIFFERENT",
-        "cells": [
-          "D4",
-          "A2"
-        ]
-      }
-    },
-    {
-      "id": "B1",
-      "name": "Brian",
+      "name": "Abel",
       "job": "Astronaut",
       "status": "CRIMINAL",
       "revealed": true,
       "clue": {
-        "id": "LEVEL_05_4X4-B1",
+        "id": "clue_A1",
         "type": "EXACTLY",
         "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "A2",
-            "A1",
-            "B1",
-            "D1"
+          "type": "INTERSECTION",
+          "of": [
+            {
+              "type": "ROW",
+              "index": 1
+            },
+            {
+              "type": "NEIGHBORS",
+              "of": "B2"
+            }
           ]
         },
         "k": 1
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bea",
+      "job": "Baker",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B1",
+        "type": "DIFFERENT",
+        "cells": [
+          "B1",
+          "B2"
+        ]
       }
     },
     {
       "id": "C1",
       "name": "Clara",
-      "job": "Singer",
-      "status": "CRIMINAL",
-      "revealed": false,
-      "clue": {
-        "id": "LEVEL_05_4X4-C1",
-        "type": "DIFFERENT",
-        "cells": [
-          "B2",
-          "C3"
-        ]
-      }
-    },
-    {
-      "id": "D1",
-      "name": "Dana",
-      "job": "Doctor",
-      "status": "INNOCENT",
-      "revealed": true,
-      "clue": {
-        "id": "LEVEL_05_4X4-D1",
-        "type": "DIFFERENT",
-        "cells": [
-          "C1",
-          "B4"
-        ]
-      }
-    },
-    {
-      "id": "A2",
-      "name": "Emma",
-      "job": "Detective",
+      "job": "Clerk",
       "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "LEVEL_05_4X4-A2",
-        "type": "DIFFERENT",
-        "cells": [
-          "D2",
-          "A4"
-        ]
-      }
-    },
-    {
-      "id": "B2",
-      "name": "Finn",
-      "job": "Doctor",
-      "status": "INNOCENT",
-      "revealed": false,
-      "clue": {
-        "id": "LEVEL_05_4X4-B2",
-        "type": "DIFFERENT",
-        "cells": [
-          "B3",
-          "C4"
-        ]
-      }
-    },
-    {
-      "id": "C2",
-      "name": "Gwen",
-      "job": "Coder",
-      "status": "CRIMINAL",
-      "revealed": false,
-      "clue": {
-        "id": "LEVEL_05_4X4-C2",
-        "type": "EXACTLY",
+        "id": "clue_C1",
+        "type": "AT_MOST",
         "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "A1",
-            "B1"
-          ]
+          "type": "ROW",
+          "index": 2
         },
         "k": 1
       }
     },
     {
-      "id": "D2",
-      "name": "Hank",
-      "job": "Student",
+      "id": "D1",
+      "name": "Derek",
+      "job": "Detective",
+      "status": "CRIMINAL",
+      "revealed": true,
+      "clue": {
+        "id": "clue_D1",
+        "type": "COMPARE",
+        "left": {
+          "type": "COL",
+          "col": "A"
+        },
+        "right": {
+          "type": "COL",
+          "col": "B"
+        },
+        "op": "<"
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Eliza",
+      "job": "Electrician",
       "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "LEVEL_05_4X4-D2",
-        "type": "DIFFERENT",
+        "id": "clue_A2",
+        "type": "EXACTLY",
+        "region": {
+          "type": "BOUNDARY"
+        },
+        "k": 3
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Franz",
+      "job": "Farmer",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B2",
+        "type": "AT_LEAST",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B2",
+            "B3",
+            "C3"
+          ]
+        },
+        "k": 3
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Grant",
+      "job": "Guard",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_C2",
+        "type": "PARITY",
+        "region": {
+          "type": "ROW",
+          "index": 3
+        },
+        "parity": "EVEN"
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Hannah",
+      "job": "Historian",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_D2",
+        "type": "FACT",
+        "cell": "C3",
+        "status": "CRIMINAL"
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Ivy",
+      "job": "Inspector",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_A3",
+        "type": "COMPARE",
+        "left": {
+          "type": "COL",
+          "col": "D"
+        },
+        "right": {
+          "type": "COL",
+          "col": "C"
+        },
+        "op": ">"
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Jonas",
+      "job": "Jeweler",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B3",
+        "type": "EXACTLY",
+        "region": {
+          "type": "ROW",
+          "index": 4
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Karl",
+      "job": "Locksmith",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_C3",
+        "type": "SAME",
         "cells": [
           "A3",
           "D3"
@@ -132,153 +193,85 @@
       }
     },
     {
-      "id": "A3",
-      "name": "Ivy",
-      "job": "Pilot",
+      "id": "D3",
+      "name": "Leo",
+      "job": "Mechanic",
       "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "LEVEL_05_4X4-A3",
-        "type": "DIFFERENT",
-        "cells": [
-          "A1",
-          "B1"
-        ]
-      }
-    },
-    {
-      "id": "B3",
-      "name": "Jonas",
-      "job": "Doctor",
-      "status": "CRIMINAL",
-      "revealed": false,
-      "clue": {
-        "id": "LEVEL_05_4X4-B3",
-        "type": "DIFFERENT",
-        "cells": [
-          "A1",
-          "B1"
-        ]
-      }
-    },
-    {
-      "id": "C3",
-      "name": "Kobe",
-      "job": "Coder",
-      "status": "CRIMINAL",
-      "revealed": false,
-      "clue": {
-        "id": "LEVEL_05_4X4-C3",
+        "id": "clue_D3",
         "type": "EXACTLY",
         "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "A3",
-            "A1",
-            "B1",
-            "D1"
-          ]
+          "type": "NEIGHBORS",
+          "of": "C3"
         },
-        "k": 1
-      }
-    },
-    {
-      "id": "D3",
-      "name": "Leo",
-      "job": "Detective",
-      "status": "CRIMINAL",
-      "revealed": false,
-      "clue": {
-        "id": "LEVEL_05_4X4-D3",
-        "type": "PARITY",
-        "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "B3",
-            "A1",
-            "B1",
-            "D1"
-          ]
-        },
-        "parity": "EVEN"
+        "k": 3
       }
     },
     {
       "id": "A4",
-      "name": "Milo",
-      "job": "Astronaut",
-      "status": "CRIMINAL",
+      "name": "Mara",
+      "job": "Musician",
+      "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "LEVEL_05_4X4-A4",
-        "type": "SAME",
-        "cells": [
-          "B2",
-          "A1"
-        ]
+        "id": "clue_A4",
+        "type": "COMPARE",
+        "left": {
+          "type": "ROW",
+          "index": 1
+        },
+        "right": {
+          "type": "ROW",
+          "index": 3
+        },
+        "op": "="
       }
     },
     {
       "id": "B4",
       "name": "Noah",
-      "job": "Singer",
+      "job": "Navigator",
       "status": "INNOCENT",
       "revealed": false,
       "clue": {
-        "id": "LEVEL_05_4X4-B4",
+        "id": "clue_B4",
+        "type": "DIFFERENT",
+        "cells": [
+          "B3",
+          "B4"
+        ]
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Owen",
+      "job": "Optician",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_C4",
         "type": "AT_MOST",
         "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "D2",
-            "A1",
-            "B1",
-            "D1"
-          ]
+          "type": "COL",
+          "col": "C"
         },
         "k": 1
       }
     },
     {
-      "id": "C4",
-      "name": "Opal",
-      "job": "Singer",
-      "status": "INNOCENT",
-      "revealed": false,
-      "clue": {
-        "id": "LEVEL_05_4X4-C4",
-        "type": "EXACTLY",
-        "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "C2",
-            "A1",
-            "B1",
-            "D1"
-          ]
-        },
-        "k": 2
-      }
-    },
-    {
       "id": "D4",
-      "name": "Pete",
-      "job": "Astronaut",
+      "name": "Priya",
+      "job": "Painter",
       "status": "CRIMINAL",
       "revealed": false,
       "clue": {
-        "id": "LEVEL_05_4X4-D4",
+        "id": "clue_D4",
         "type": "PARITY",
         "region": {
-          "type": "EXPLICIT",
-          "cells": [
-            "C1",
-            "A1",
-            "B1",
-            "D1"
-          ]
+          "type": "BOUNDARY"
         },
-        "parity": "EVEN"
+        "parity": "ODD"
       }
     }
   ]
