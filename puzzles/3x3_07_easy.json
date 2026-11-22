@@ -1,0 +1,158 @@
+{
+  "size": 3,
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Avery",
+      "job": "Architect",
+      "status": "CRIMINAL",
+      "revealed": true,
+      "clue": {
+        "id": "EXT1-01",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "A1",
+            "B1"
+          ]
+        },
+        "parity": "ODD"
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Blake",
+      "job": "Baker",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-02",
+        "type": "SAME",
+        "cells": [
+          "B1",
+          "C1"
+        ]
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Casey",
+      "job": "Chemist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-03",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "C1",
+            "A2"
+          ]
+        },
+        "parity": "ODD"
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Devon",
+      "job": "Doctor",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-04",
+        "type": "SAME",
+        "cells": [
+          "A2",
+          "B2"
+        ]
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Emery",
+      "job": "Engineer",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-05",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B2",
+            "C2"
+          ]
+        },
+        "parity": "EVEN"
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Finley",
+      "job": "Florist",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-06",
+        "type": "DIFFERENT",
+        "cells": [
+          "C2",
+          "A3"
+        ]
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Gray",
+      "job": "Guide",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-07",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "A3",
+            "B3"
+          ]
+        },
+        "parity": "ODD"
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Harper",
+      "job": "Historian",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-08",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B3",
+            "C3"
+          ]
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Indigo",
+      "job": "Illustrator",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-09",
+        "type": "FACT",
+        "cell": "A1",
+        "status": "CRIMINAL"
+      }
+    }
+  ]
+}

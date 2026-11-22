@@ -1,0 +1,164 @@
+{
+  "size": 3,
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Amber",
+      "job": "Artist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_A1",
+        "type": "EXACTLY",
+        "region": {
+          "type": "ROW",
+          "index": 2
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Brian",
+      "job": "Barista",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B1",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "A1",
+            "B2"
+          ]
+        },
+        "k": 0
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Chloe",
+      "job": "Curator",
+      "status": "INNOCENT",
+      "revealed": true,
+      "clue": {
+        "id": "clue_C1",
+        "type": "DIFFERENT",
+        "cells": [
+          "B1",
+          "C1"
+        ]
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Derek",
+      "job": "Driver",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_A2",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "A1",
+            "C1",
+            "A3",
+            "C3"
+          ]
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Elena",
+      "job": "Editor",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B2",
+        "type": "SAME",
+        "cells": [
+          "A1",
+          "A3"
+        ]
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Felix",
+      "job": "Firefighter",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_C2",
+        "type": "PARITY",
+        "region": {
+          "type": "ROW",
+          "index": 3
+        },
+        "parity": "EVEN"
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Grace",
+      "job": "Gardener",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_A3",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "A1",
+            "B1",
+            "C1",
+            "A2",
+            "C2",
+            "A3",
+            "B3",
+            "C3"
+          ]
+        },
+        "k": 5
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Henry",
+      "job": "Hotelier",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B3",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": []
+        },
+        "k": 0
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Irene",
+      "job": "Illustrator",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_C3",
+        "type": "AT_LEAST",
+        "region": {
+          "type": "COL",
+          "col": "B"
+        },
+        "k": 2
+      }
+    }
+  ]
+}

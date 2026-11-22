@@ -1,0 +1,287 @@
+{
+  "size": 4,
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Avery",
+      "job": "Architect",
+      "status": "CRIMINAL",
+      "revealed": true,
+      "clue": {
+        "id": "EXT1-01",
+        "type": "DIFFERENT",
+        "cells": [
+          "A1",
+          "B1"
+        ]
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Blake",
+      "job": "Baker",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-02",
+        "type": "AT_LEAST",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B1",
+            "C1"
+          ]
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Casey",
+      "job": "Chemist",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-03",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "C1",
+            "D1"
+          ]
+        },
+        "parity": "EVEN"
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Devon",
+      "job": "Doctor",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-04",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "D1",
+            "A2"
+          ]
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Emery",
+      "job": "Engineer",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-05",
+        "type": "DIFFERENT",
+        "cells": [
+          "A2",
+          "B2"
+        ]
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Finley",
+      "job": "Florist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-06",
+        "type": "AT_MOST",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B2",
+            "C2"
+          ]
+        },
+        "k": 0
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Gray",
+      "job": "Guide",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-07",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "C2",
+            "D2"
+          ]
+        },
+        "parity": "EVEN"
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Harper",
+      "job": "Historian",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-08",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "D2",
+            "A3"
+          ]
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Indigo",
+      "job": "Illustrator",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-09",
+        "type": "DIFFERENT",
+        "cells": [
+          "A3",
+          "B3"
+        ]
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Jordan",
+      "job": "Journalist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-10",
+        "type": "AT_LEAST",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B3",
+            "C3"
+          ]
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Kai",
+      "job": "Keeper",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-11",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "C3",
+            "D3"
+          ]
+        },
+        "parity": "EVEN"
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Logan",
+      "job": "Librarian",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-12",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "D3",
+            "A4"
+          ]
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "A4",
+      "name": "Morgan",
+      "job": "Mechanic",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-13",
+        "type": "DIFFERENT",
+        "cells": [
+          "A4",
+          "B4"
+        ]
+      }
+    },
+    {
+      "id": "B4",
+      "name": "Noel",
+      "job": "Nurse",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-14",
+        "type": "AT_MOST",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B4",
+            "C4"
+          ]
+        },
+        "k": 0
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Oakley",
+      "job": "Optician",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-15",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "C4",
+            "D4"
+          ]
+        },
+        "k": 0
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Parker",
+      "job": "Pilot",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "EXT1-16",
+        "type": "FACT",
+        "cell": "A1",
+        "status": "CRIMINAL"
+      }
+    }
+  ]
+}

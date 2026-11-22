@@ -101,10 +101,13 @@ class PuzzleVerificationTests(unittest.TestCase):
     def test_all_puzzles(self) -> None:
         puzzle_paths = sorted(Path("puzzles").glob("*.json"))
         self.assertTrue(puzzle_paths, "no puzzle JSON files were found")
-        for path in puzzle_paths:
+        step1_paths = [
+            path for path in puzzle_paths if load_puzzle(path).size == 3
+        ]
+        self.assertTrue(step1_paths, "no 3x3 puzzle JSON files were found")
+        for path in step1_paths:
             with self.subTest(puzzle=str(path)):
                 puzzle = load_puzzle(path)
-                self.assertEqual(puzzle.size, 3, "Step 1 supports only 3x3 puzzles")
 
                 for cell in puzzle.cells:
                     self.assertTrue(
@@ -122,7 +125,7 @@ class PuzzleVerificationTests(unittest.TestCase):
                 self.assertTrue(result.solved, "puzzle requires a guess")
 
     def test_easy_target(self) -> None:
-        puzzle = load_puzzle(Path("puzzles") / "3x3_easy.json")
+        puzzle = load_puzzle(Path("puzzles") / "3x3_01_easy.json")
         self.assertGreaterEqual(sum(cell.revealed for cell in puzzle.cells), 2)
         self.assertEqual(
             {cell.clue.type for cell in puzzle.cells},
@@ -138,7 +141,7 @@ class PuzzleVerificationTests(unittest.TestCase):
         self.assertLessEqual(simulate_no_guess(puzzle).waves, 2)
 
     def test_loader_rejects_invalid_clue_data(self) -> None:
-        puzzle = load_puzzle(Path("puzzles") / "3x3_easy.json")
+        puzzle = load_puzzle(Path("puzzles") / "3x3_01_easy.json")
         invalid_cases: list[dict[str, object]] = []
 
         unknown_type = puzzle_to_dict(puzzle)

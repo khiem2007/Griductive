@@ -1,0 +1,436 @@
+{
+  "size": 5,
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Ada",
+      "job": "Astronaut",
+      "status": "INNOCENT",
+      "revealed": true,
+      "clue": {
+        "id": "LEVEL_08_5X5-A1",
+        "type": "SAME",
+        "cells": [
+          "E5",
+          "B2"
+        ]
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bella",
+      "job": "Doctor",
+      "status": "CRIMINAL",
+      "revealed": true,
+      "clue": {
+        "id": "LEVEL_08_5X5-B1",
+        "type": "AT_LEAST",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B2",
+            "A1",
+            "B1",
+            "C1",
+            "D1"
+          ]
+        },
+        "k": 3
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Cara",
+      "job": "Painter",
+      "status": "INNOCENT",
+      "revealed": true,
+      "clue": {
+        "id": "LEVEL_08_5X5-C1",
+        "type": "SAME",
+        "cells": [
+          "E1",
+          "D4"
+        ]
+      }
+    },
+    {
+      "id": "D1",
+      "name": "Dean",
+      "job": "Cook",
+      "status": "CRIMINAL",
+      "revealed": true,
+      "clue": {
+        "id": "LEVEL_08_5X5-D1",
+        "type": "DIFFERENT",
+        "cells": [
+          "A2",
+          "C5"
+        ]
+      }
+    },
+    {
+      "id": "E1",
+      "name": "Eliza",
+      "job": "Mechanic",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-E1",
+        "type": "DIFFERENT",
+        "cells": [
+          "D2",
+          "E4"
+        ]
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Finn",
+      "job": "Doctor",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-A2",
+        "type": "SAME",
+        "cells": [
+          "A3",
+          "D5"
+        ]
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Gina",
+      "job": "Scientist",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-B2",
+        "type": "SAME",
+        "cells": [
+          "C2",
+          "A5"
+        ]
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Hazel",
+      "job": "Singer",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-C2",
+        "type": "SAME",
+        "cells": [
+          "B3",
+          "E3"
+        ]
+      }
+    },
+    {
+      "id": "D2",
+      "name": "Ivy",
+      "job": "Scientist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-D2",
+        "type": "SAME",
+        "cells": [
+          "C3",
+          "B5"
+        ]
+      }
+    },
+    {
+      "id": "E2",
+      "name": "James",
+      "job": "Teacher",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-E2",
+        "type": "DIFFERENT",
+        "cells": [
+          "A1",
+          "B1"
+        ]
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Karl",
+      "job": "Teacher",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-A3",
+        "type": "SAME",
+        "cells": [
+          "D3",
+          "C4"
+        ]
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Leo",
+      "job": "Detective",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-B3",
+        "type": "DIFFERENT",
+        "cells": [
+          "A4",
+          "B4"
+        ]
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Mara",
+      "job": "Painter",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-C3",
+        "type": "DIFFERENT",
+        "cells": [
+          "A1",
+          "B1"
+        ]
+      }
+    },
+    {
+      "id": "D3",
+      "name": "Ned",
+      "job": "Astronaut",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-D3",
+        "type": "DIFFERENT",
+        "cells": [
+          "A1",
+          "B1"
+        ]
+      }
+    },
+    {
+      "id": "E3",
+      "name": "Nola",
+      "job": "Judge",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-E3",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "C3",
+            "A1",
+            "B1",
+            "C1",
+            "D1"
+          ]
+        },
+        "parity": "ODD"
+      }
+    },
+    {
+      "id": "A4",
+      "name": "Opal",
+      "job": "Singer",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-A4",
+        "type": "DIFFERENT",
+        "cells": [
+          "A1",
+          "B1"
+        ]
+      }
+    },
+    {
+      "id": "B4",
+      "name": "Paul",
+      "job": "Doctor",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-B4",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "E2",
+            "A1",
+            "B1",
+            "C1",
+            "D1"
+          ]
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "C4",
+      "name": "Quilla",
+      "job": "Mechanic",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-C4",
+        "type": "SAME",
+        "cells": [
+          "A4",
+          "A1"
+        ]
+      }
+    },
+    {
+      "id": "D4",
+      "name": "Rosa",
+      "job": "Officer",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-D4",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "A2",
+            "A1",
+            "B1",
+            "C1",
+            "D1"
+          ]
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "E4",
+      "name": "Sam",
+      "job": "Officer",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-E4",
+        "type": "SAME",
+        "cells": [
+          "A3",
+          "B1"
+        ]
+      }
+    },
+    {
+      "id": "A5",
+      "name": "Seth",
+      "job": "Farmer",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-A5",
+        "type": "AT_MOST",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "D2",
+            "A1",
+            "B1",
+            "C1",
+            "D1"
+          ]
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "B5",
+      "name": "Tess",
+      "job": "Astronaut",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-B5",
+        "type": "AT_LEAST",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "D3",
+            "A1",
+            "B1",
+            "C1",
+            "D1"
+          ]
+        },
+        "k": 3
+      }
+    },
+    {
+      "id": "C5",
+      "name": "Theo",
+      "job": "Farmer",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-C5",
+        "type": "PARITY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "C2",
+            "A1",
+            "B1",
+            "C1",
+            "D1"
+          ]
+        },
+        "parity": "EVEN"
+      }
+    },
+    {
+      "id": "D5",
+      "name": "Vera",
+      "job": "Coder",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-D5",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B3",
+            "A1",
+            "B1",
+            "C1",
+            "D1"
+          ]
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "E5",
+      "name": "Zane",
+      "job": "Pilot",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "LEVEL_08_5X5-E5",
+        "type": "SAME",
+        "cells": [
+          "E1",
+          "A1"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "size": 3,
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Aaron",
+      "job": "Analyst",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "CL_A1",
+        "type": "EXACTLY",
+        "region": {
+          "type": "ROW",
+          "index": 1
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bella",
+      "job": "Architect",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "CL_B1",
+        "type": "EXACTLY",
+        "region": {
+          "type": "COL",
+          "col": "B"
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Chloe",
+      "job": "Baker",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "CL_C1",
+        "type": "EXACTLY",
+        "region": {
+          "type": "COL",
+          "col": "C"
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Dylan",
+      "job": "Designer",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "CL_A2",
+        "type": "EXACTLY",
+        "region": {
+          "type": "COL",
+          "col": "A"
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Ethan",
+      "job": "Engineer",
+      "status": "CRIMINAL",
+      "revealed": true,
+      "clue": {
+        "id": "CL_B2",
+        "type": "EXACTLY",
+        "region": {
+          "type": "ROW",
+          "index": 2
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Fiona",
+      "job": "Pharmacist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "CL_C2",
+        "type": "EXACTLY",
+        "region": {
+          "type": "NEIGHBORS",
+          "of": "B2"
+        },
+        "k": 3
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Gavin",
+      "job": "Journalist",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "CL_A3",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "A3",
+            "B3",
+            "C3"
+          ]
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Hazel",
+      "job": "Nurse",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "CL_B3",
+        "type": "EXACTLY",
+        "region": {
+          "type": "NEIGHBORS",
+          "of": "C3"
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Ian",
+      "job": "Pilot",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "CL_C3",
+        "type": "EXACTLY",
+        "region": {
+          "type": "ROW",
+          "index": 3
+        },
+        "k": 2
+      }
+    }
+  ]
+}

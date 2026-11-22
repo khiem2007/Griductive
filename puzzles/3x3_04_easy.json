@@ -1,0 +1,155 @@
+{
+  "size": 3,
+  "cells": [
+    {
+      "id": "A1",
+      "name": "Aaron",
+      "job": "Architect",
+      "status": "CRIMINAL",
+      "revealed": true,
+      "clue": {
+        "id": "clue_A1",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "B1",
+            "A2"
+          ]
+        },
+        "k": 0
+      }
+    },
+    {
+      "id": "B1",
+      "name": "Bella",
+      "job": "Biologist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B1",
+        "type": "SAME",
+        "cells": [
+          "A1",
+          "C1"
+        ]
+      }
+    },
+    {
+      "id": "C1",
+      "name": "Caleb",
+      "job": "Chef",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_C1",
+        "type": "EXACTLY",
+        "region": {
+          "type": "COL",
+          "col": "A"
+        },
+        "k": 2
+      }
+    },
+    {
+      "id": "A2",
+      "name": "Diana",
+      "job": "Dentist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_A2",
+        "type": "DIFFERENT",
+        "cells": [
+          "A2",
+          "B2"
+        ]
+      }
+    },
+    {
+      "id": "B2",
+      "name": "Ethan",
+      "job": "Engineer",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B2",
+        "type": "EXACTLY",
+        "region": {
+          "type": "NEIGHBORS",
+          "of": "B2"
+        },
+        "k": 3
+      }
+    },
+    {
+      "id": "C2",
+      "name": "Fiona",
+      "job": "Florist",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_C2",
+        "type": "PARITY",
+        "region": {
+          "type": "ROW",
+          "index": 3
+        },
+        "parity": "ODD"
+      }
+    },
+    {
+      "id": "A3",
+      "name": "Gavin",
+      "job": "Geologist",
+      "status": "CRIMINAL",
+      "revealed": false,
+      "clue": {
+        "id": "clue_A3",
+        "type": "EXACTLY",
+        "region": {
+          "type": "EXPLICIT",
+          "cells": [
+            "A1",
+            "C1",
+            "A3",
+            "C3"
+          ]
+        },
+        "k": 3
+      }
+    },
+    {
+      "id": "B3",
+      "name": "Hazel",
+      "job": "Historian",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_B3",
+        "type": "EXACTLY",
+        "region": {
+          "type": "COL",
+          "col": "B"
+        },
+        "k": 1
+      }
+    },
+    {
+      "id": "C3",
+      "name": "Isaac",
+      "job": "Inspector",
+      "status": "INNOCENT",
+      "revealed": false,
+      "clue": {
+        "id": "clue_C3",
+        "type": "PARITY",
+        "region": {
+          "type": "ROW",
+          "index": 1
+        },
+        "parity": "EVEN"
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+3x3_01_easy.json: retained baseline level
+3x3_02_easy.json: DRAGON-1312_Griductive__puzzle_3x3_01.json
+3x3_03_easy.json: DRAGON-1312_Griductive__puzzle_3x3_02.json
+3x3_04_easy.json: ManOnGit13_griductive-solver__puzzle_3x3_02.json
+3x3_05_easy.json: ManOnGit13_griductive-solver__puzzle_3x3_03.json
+3x3_06_easy.json: chiendz205_Griductive-Solver__puzzle_07_3x3_neighbors.json
+3x3_07_easy.json: louis-creator_griductive_solver__3x3_extensions_01.json
+3x3_08_easy.json: thienn-nguyen-1506_project2-griductive-dpll-solver__level_02_3x3.json
+3x3_09_medium.json: thienn-nguyen-1506_project2-griductive-dpll-solver__level_01_3x3.json
+4x4_01_easy.json: louis-creator_griductive_solver__4x4_mixed_01.json
+4x4_02_medium.json: DRAGON-1312_Griductive__puzzle_4x4_01.json
+4x4_03_medium.json: ManOnGit13_griductive-solver__puzzle_4x4_01.json
+4x4_04_medium.json: thienn-nguyen-1506_project2-griductive-dpll-solver__level_03_4x4.json
+4x4_05_medium.json: thienn-nguyen-1506_project2-griductive-dpll-solver__level_04_4x4.json
+5x5_01_easy.json: ManOnGit13_griductive-solver__puzzle_5x5_stress.json
+5x5_02_hard.json: thienn-nguyen-1506_project2-griductive-dpll-solver__level_05_5x5.json
+5x5_03_hard.json: thienn-nguyen-1506_project2-griductive-dpll-solver__level_06_5x5.json
+
+Link github repository:
+https://github.com/DRAGON-1312/Griductive
+https://github.com/ManOnGit13/griductive-solver
+https://github.com/thienn-nguyen-1506/project2-griductive-dpll-solver
+https://github.com/louis-creator/griductive_solver
+https://github.com/chiendz205/Griductive-Solver
