@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import sys
 import time
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
-
 
 Clause = list[int]
-
 
 @dataclass(frozen=True)
 class SolveStatistics:
@@ -35,6 +33,185 @@ class _DeadlineExceeded(Exception):
     """Internal control-flow signal used to stop every recursive branch."""
 
 
+class _DPLLSolver:
+    """Mutable state and recursive operations for one DPLL invocation."""
+
+    def __init__(
+        self,
+        clauses: tuple[tuple[int, ...], ...],
+        num_vars: int,
+        deadline: float | None,
+        started_at: float,
+    ) -> None:
+        self.clauses = clauses # Lưu công thức CNF đã được chuẩn hóa
+        self.num_vars = num_vars # Số lượng các biến 
+        self.deadline = deadline # Mốc thời gian mà solver phải chạy
+        self.started_at = started_at # Thời điểm bắt đầu gọi solver
+        self.assignment = [-1] * (num_vars + 1) # Giá trị gán cho các biến theo chuẩn DIMACS, vị trí 0 không được sử dụng để đơn giản hơn
+        self.trail: list[int] = [] # Lưu thứ tự các biến được gán để phục vụ backtracking 
+        self.decisions = 0 # Đếm số lần DPLL phải tự chọn 1 biến để rẽ nhánh
+        self.propagations = 0 # Đếm số phép gán được suy ra từ unit clause hiện tại
+        self.backtracks = 0 # Đếm số nhánh đã thử và thất bại
+
+    def result(
+        self,
+        satisfiable: bool | None,
+        *,
+        model: dict[int, bool] | None = None,
+        timed_out: bool = False,
+    ) -> SolveResult:
+        """Build a result using the current counters and elapsed runtime."""
+
+        return SolveResult(
+            satisfiable=satisfiable,
+            model=model,
+            timed_out=timed_out,
+            statistics=SolveStatistics(
+                decisions=self.decisions,
+                propagations=self.propagations,
+                backtracks=self.backtracks,
+                runtime=time.monotonic() - self.started_at,
+            ),
+        )
+
+    def deadline_check(self) -> None:
+        """Stop the complete recursive search once its deadline expires."""
+
+        if self.deadline is not None and time.monotonic() >= self.deadline:
+            raise _DeadlineExceeded
+
+    def undo(self, mark: int) -> None:
+        """Restore assignments made after a recorded trail position."""
+
+        while len(self.trail) > mark:
+            variable = self.trail.pop()
+            self.assignment[variable] = -1
+    
+    
+    def assign_literal(self, literal: int) -> bool:
+        value = -1
+        if literal > 0:
+            value = 1
+        else:
+            value = 0
+        if self.assignment[abs(literal)] == -1:
+            self.assignment[abs(literal)] = value  
+            self.trail.append(literal)
+            return True
+        return self.assignment[abs(literal)] == value
+    
+    
+    
+    
+    
+    
+    def assign_literal(self, literal: int) -> bool:
+        """Assign a literal, returning False only for an opposing assignment."""
+
+        variable = abs(literal)
+        value = 1 if literal > 0 else 0
+        current = self.assignment[variable]
+        if current == -1:
+            self.assignment[variable] = value
+            self.trail.append(variable)
+            return True
+        return current == value 
+                
+                
+                
+    def propagate_units(self) -> bool:
+        """Repeatedly scan all clauses until stable or a conflict appears."""
+
+        while True:
+            self.deadline_check()
+            changed = False
+            for clause in self.clauses:
+                self.deadline_check()
+                satisfied, unassigned_count, unit_literal = self._analyze_clause(clause)
+                if satisfied:
+                    continue
+                if unassigned_count == 0:
+                    return False
+                if unassigned_count == 1:
+                    if not self.assign_literal(unit_literal):
+                        return False
+                    self.propagations += 1
+                    changed = True
+            if not changed:
+                return True
+
+    def choose_variable(self) -> int| None:
+        """Choose the smallest unassigned variable in an unsatisfied clause"""
+
+        candidate: int | None 
+        for clause in self.clauses:
+            self.deadline_check()
+            for literal in clause:
+                if self._is_true(literal): continue
+            for literal in clause:
+                variable = abs(literal)
+                if self.assignment[variable] == -1 and (not candidate or candidate > variable):
+                    candidate = variable
+        return candidate
+        
+        
+    def search(self) -> bool:
+        """Run recursive DPLL, trying True before False at each decision."""
+
+        self.deadline_check()
+        level_mark = len(self.trail)
+        if not self.propagate_units():
+            self.undo(level_mark)
+            return False
+
+        variable = self.choose_variable()
+        if variable is None:
+            return True
+
+        self.decisions += 1
+        branch_mark = len(self.trail)
+        for value in (True, False):
+            literal = variable if value else -variable
+            if not self.assign_literal(literal):
+                raise AssertionError("selected DPLL variable was already assigned")
+            if self.search():
+                return True
+            self.undo(branch_mark)
+            self.backtracks += 1
+
+        self.undo(level_mark)
+        return False
+
+    def build_model(self) -> dict[int, bool]:
+        """Return a complete model, assigning False to every free variable."""
+
+        return {
+            variable: self.assignment[variable] == 1
+            if self.assignment[variable] != -1
+            else False
+            for variable in range(1, self.num_vars + 1)
+        }
+
+    def _is_true(self, literal: int) -> bool:
+        """Return whether a literal is true under the partial assignment."""
+
+        value = self.assignment[abs(literal)]
+        return (literal > 0 and value == 1) or (literal < 0 and value == 0)
+
+    def _analyze_clause(self, clause: tuple[int, ...]) -> tuple[bool, int, int]:
+        """Return satisfied flag, free-literal count, and last free literal."""
+
+        unassigned_count = 0
+        unit_literal = 0
+        for literal in clause:
+            if self.assignment[abs(literal)] == -1:
+                unassigned_count += 1
+                unit_literal = literal
+            elif self._is_true(literal):
+                return True, unassigned_count, unit_literal
+        return False, unassigned_count, unit_literal
+
+
 def solve(
     clauses: Sequence[Clause],
     num_vars: int,
@@ -58,155 +235,26 @@ def solve(
     if required_recursion_limit > sys.getrecursionlimit():
         sys.setrecursionlimit(required_recursion_limit)
 
-    assignment = [-1] * (num_vars + 1)
-    trail: list[int] = []
-    decisions = 0
-    propagations = 0
-    backtracks = 0
-
-    def statistics() -> SolveStatistics:
-        return SolveStatistics(
-            decisions = decisions,
-            propagations = propagations,
-            backtracks = backtracks,
-            runtime = time.monotonic() - started_at,
-        )
-
-    def deadline_check() -> None:
-        if deadline is not None and time.monotonic() >= deadline:
-            raise _DeadlineExceeded
-
-    def undo(mark: int) -> None:
-        while len(trail) > mark:
-            variable = trail.pop()
-            assignment[variable] = -1
-
-    def assign_literal(literal: int) -> bool:
-        variable = abs(literal)
-        value = 1 if literal > 0 else 0
-        current = assignment[variable]
-        if current == -1:
-            assignment[variable] = value
-            trail.append(variable)
-            return True
-        return current == value
-
-    def propagate_units() -> bool:
-        nonlocal propagations
-        while True:
-            deadline_check()
-            changed = False
-            for clause in normalized_clauses:
-                deadline_check()
-                satisfied = False
-                unassigned_count = 0
-                unit_literal = 0
-                for literal in clause:
-                    value = assignment[abs(literal)]
-                    if value == -1:
-                        unassigned_count += 1
-                        unit_literal = literal
-                    elif (literal > 0 and value == 1) or (literal < 0 and value == 0):
-                        satisfied = True
-                        break
-                if satisfied:
-                    continue
-                if unassigned_count == 0:
-                    return False
-                if unassigned_count == 1:
-                    if not assign_literal(unit_literal):
-                        return False
-                    propagations += 1
-                    changed = True
-            if not changed:
-                return True
-
-    def choose_variable() -> int | None:
-        candidate: int | None = None
-        for clause in normalized_clauses:
-            deadline_check()
-            clause_satisfied = False
-            for literal in clause:
-                value = assignment[abs(literal)]
-                if (literal > 0 and value == 1) or (literal < 0 and value == 0):
-                    clause_satisfied = True
-                    break
-            if clause_satisfied:
-                continue
-            for literal in clause:
-                variable = abs(literal)
-                if assignment[variable] == -1 and (
-                    candidate is None or variable < candidate
-                ):
-                    candidate = variable
-        return candidate
-
-    def search() -> bool:
-        nonlocal decisions, backtracks
-        deadline_check()
-        level_mark = len(trail)
-        if not propagate_units():
-            undo(level_mark)
-            return False
-
-        variable = choose_variable()
-        if variable is None:
-            return True
-
-        decisions += 1
-        branch_mark = len(trail)
-        for value in (True, False):
-            literal = variable if value else -variable
-            if not assign_literal(literal):
-                raise AssertionError("selected DPLL variable was already assigned")
-            if search():
-                return True
-            undo(branch_mark)
-            backtracks += 1
-
-        undo(level_mark)
-        return False
+    solver = _DPLLSolver(
+        normalized_clauses,
+        num_vars,
+        deadline,
+        started_at,
+    )
 
     for literal in normalized_assumptions:
-        if not assign_literal(literal):
-            return SolveResult(
-                satisfiable=False,
-                model=None,
-                timed_out=False,
-                statistics=statistics(),
-            )
+        if not solver.assign_literal(literal):
+            return solver.result(False)
 
     try:
-        deadline_check()
-        satisfiable = search()
+        solver.deadline_check()
+        satisfiable = solver.search()
     except _DeadlineExceeded:
-        return SolveResult(
-            satisfiable=None,
-            model=None,
-            timed_out=True,
-            statistics=statistics(),
-        )
+        return solver.result(None, timed_out=True)
 
     if not satisfiable:
-        return SolveResult(
-            satisfiable=False,
-            model=None,
-            timed_out=False,
-            statistics=statistics(),
-        )
-
-    model = {
-        variable: assignment[variable] == 1
-        if assignment[variable] != -1
-        else False
-        for variable in range(1, num_vars + 1)
-    }
-    return SolveResult(
-        satisfiable=True,
-        model=model,
-        timed_out=False,
-        statistics=statistics(),
-    )
+        return solver.result(False)
+    return solver.result(True, model=solver.build_model())
 
 
 def _normalize_clauses(

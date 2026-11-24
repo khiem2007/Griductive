@@ -10,13 +10,15 @@ from core.models import PublicState
 class SolverSkeletonTests(unittest.TestCase):
     """Ensure every reserved module is importable but not implemented."""
 
-    def test_dpll_skeleton(self) -> None:
+    def test_dpll_result_types(self) -> None:
         from solver.dpll import SolveResult, SolveStatistics, solve
 
         result_type = SolveResult(None, None, False, SolveStatistics())
         self.assertIsNone(result_type.satisfiable)
-        with self.assertRaises(NotImplementedError):
-            solve([], 0)
+        result = solve([], 0)
+        self.assertIs(result.satisfiable, True)
+        self.assertEqual(result.model, {})
+        self.assertFalse(result.timed_out)
 
     def test_encoder_skeleton(self) -> None:
         from solver.encoder import Encoder, EncoderStatistics, KnowledgeBase, build_kb
