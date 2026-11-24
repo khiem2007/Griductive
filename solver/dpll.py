@@ -86,25 +86,7 @@ class _DPLLSolver:
         while len(self.trail) > mark:
             variable = self.trail.pop()
             self.assignment[variable] = -1
-    
-    
-    def assign_literal(self, literal: int) -> bool:
-        value = -1
-        if literal > 0:
-            value = 1
-        else:
-            value = 0
-        if self.assignment[abs(literal)] == -1:
-            self.assignment[abs(literal)] = value  
-            self.trail.append(literal)
-            return True
-        return self.assignment[abs(literal)] == value
-    
-    
-    
-    
-    
-    
+
     def assign_literal(self, literal: int) -> bool:
         """Assign a literal, returning False only for an opposing assignment."""
 
@@ -115,10 +97,8 @@ class _DPLLSolver:
             self.assignment[variable] = value
             self.trail.append(variable)
             return True
-        return current == value 
-                
-                
-                
+        return current == value
+
     def propagate_units(self) -> bool:
         """Repeatedly scan all clauses until stable or a conflict appears."""
 
@@ -140,21 +120,22 @@ class _DPLLSolver:
             if not changed:
                 return True
 
-    def choose_variable(self) -> int| None:
-        """Choose the smallest unassigned variable in an unsatisfied clause"""
+    def choose_variable(self) -> int | None:
+        """Choose the smallest unassigned variable in an unsatisfied clause."""
 
-        candidate: int | None 
+        candidate: int | None = None
         for clause in self.clauses:
             self.deadline_check()
-            for literal in clause:
-                if self._is_true(literal): continue
+            if any(self._is_true(literal) for literal in clause):
+                continue
             for literal in clause:
                 variable = abs(literal)
-                if self.assignment[variable] == -1 and (not candidate or candidate > variable):
+                if self.assignment[variable] == -1 and (
+                    candidate is None or variable < candidate
+                ):
                     candidate = variable
         return candidate
-        
-        
+
     def search(self) -> bool:
         """Run recursive DPLL, trying True before False at each decision."""
 
