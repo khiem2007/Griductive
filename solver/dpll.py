@@ -66,10 +66,10 @@ def solve(
 
     def statistics() -> SolveStatistics:
         return SolveStatistics(
-            decisions=decisions,
-            propagations=propagations,
-            backtracks=backtracks,
-            runtime=time.monotonic() - started_at,
+            decisions = decisions,
+            propagations = propagations,
+            backtracks = backtracks,
+            runtime = time.monotonic() - started_at,
         )
 
     def deadline_check() -> None:
