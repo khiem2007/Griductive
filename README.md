@@ -1,5 +1,58 @@
 # Griductive Solver — CSC14003, Project 2
 
+## Solver update — 25/11/2026
+
+`solver/encoder.py` and `solver/agent.py` are implemented and use the existing
+DPLL solver. The older progress notes below describe the manual-game milestone.
+
+- `Encoder`: row-major primary variables (True = CRIMINAL), all eight clue
+  types, polynomial unary counters and XOR gates with fresh auxiliary variables.
+  `encode_clue()` returns clauses; `encoder.num_vars` includes the auxiliaries.
+  Reuse one Encoder when combining clues. `build_kb()` includes only revealed
+  statuses and revealed clues.
+- `LogicAgent`: SAT-based classification, proof referee, hints, row-major forced
+  moves, and automatic play with deduction traces. An unresolved cell is UNKNOWN
+  when both polarities are satisfiable, INCONSISTENT when neither is, and TIMEOUT
+  when a required query expires. `hint()`/`next_forced()` return None and `run()`
+  stops when no further proof is available. `classify()`/`classify_all()` expose
+  the reason. `Hint.relevant_clue_id` is None because deductions may require
+  several clues; trace records include all active clue IDs, not a minimal proof.
+- `check_uniqueness()`: solves the complete clue set twice, blocking only the
+  primary assignment after the first solution. Auxiliary differences cannot
+  incorrectly count as a second solution.
+
+Use the proof-based engine programmatically:
+
+```python
+import time
+from core.engine import GameEngine
+from core.models import load_puzzle
+from solver.agent import LogicAgent, check_uniqueness
+
+puzzle = load_puzzle("puzzles/3x3_01_easy.json")
+agent = LogicAgent(deadline=time.monotonic() + 10)
+game = GameEngine(puzzle, referee=agent)
+trace = agent.run(game)
+print(game.is_solved(), len(trace))
+result = check_uniqueness(
+    puzzle.size, [cell.clue for cell in puzzle.cells],
+    deadline=time.monotonic() + 10,
+)
+print(result.status)
+```
+
+Deadlines are absolute `time.monotonic()` timestamps passed to DPLL; encoding
+finishes before SAT timeout checks. No extra dependencies are required.
+`python main.py` still starts manual practice; this update does not enable GUI
+Hint/Auto Solve controls. Agent trace step numbers count accepted moves over
+the lifetime of that agent instance.
+
+Run focused tests with:
+
+```powershell
+python -B -m unittest tests.test_encoder_agent tests.test_dpll tests.test_solver_skeletons
+```
+
 Đồ án **Nhập môn Trí tuệ nhân tạo**: xây dựng trò chơi Griductive và bộ giải suy luận bằng logic mệnh đề, mã hóa CNF và thuật toán DPLL tự cài đặt.
 
 **Cập nhật tiến độ: 21/11/2026.** Phiên bản hiện tại đã có game luyện tập thủ công bằng Pygame, bộ đọc/kiểm tra puzzle JSON và các giao diện dành cho bộ giải. Phần mã hóa CNF, DPLL và suy luận tự động chưa được triển khai.

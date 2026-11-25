@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from core.models import PublicState
+from core.models import PublicState, Verdict
 
 
 class SolverSkeletonTests(unittest.TestCase):
@@ -28,16 +28,16 @@ class SolverSkeletonTests(unittest.TestCase):
         self.assertEqual(encoder.cell_of(9), "C3")
         record = KnowledgeBase((), 9, EncoderStatistics(9, 0, 0))
         self.assertEqual(record.num_vars, 9)
-        with self.assertRaises(NotImplementedError):
-            build_kb(PublicState(3, {}, {}, {}))
+        self.assertEqual(build_kb(PublicState(3, {}, {}, {})), record)
 
     def test_agent_skeleton(self) -> None:
         from solver.agent import LogicAgent, UniquenessResult, UniquenessStatus
 
         record = UniquenessResult(UniquenessStatus.NO_SOLUTION)
         self.assertIs(record.status, UniquenessStatus.NO_SOLUTION)
-        with self.assertRaises(NotImplementedError):
-            LogicAgent().classify(PublicState(3, {}, {}, {}), "A1")
+        self.assertIs(
+            LogicAgent().classify(PublicState(3, {}, {}, {}), "A1"), Verdict.UNKNOWN
+        )
 
 
 if __name__ == "__main__":
