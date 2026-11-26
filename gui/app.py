@@ -13,6 +13,8 @@ from core.engine import GameEngine
 from core.models import MoveResult, PublicState, Verdict
 from core.regions import cell_ids, clue_cells, describe_clue
 from gui.avatars import AvatarRenderer
+from gui.trace import TraceEntry, TracedAgent
+from solver.agent import TraceStep
 
 if TYPE_CHECKING:
     from solver.agent import LogicAgent
@@ -125,6 +127,9 @@ class GriductiveApp:
         self._hint_cell: str | None = None
         self._next_auto_step: float | None = None
         self._auto_steps = 0
+        self._trace: list[TraceEntry] = []
+        self._trace_open = False
+        self._trace_scroll = 0
         self._running = False
         self._selected_cell: str | None = None
         self._active_clue_cell: str | None = None
@@ -244,6 +249,9 @@ class GriductiveApp:
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 self._handle_selector_click(event.pos)
             return
+        if self._trace_open:
+            self._handle_trace_event(event)
+            return
         if self._selected_cell is not None:
             self._handle_card_popup_event(event)
             return
@@ -280,6 +288,8 @@ class GriductiveApp:
         self._draw_side_panel(state, side_left, height)
         if self._selected_cell is not None:
             self._draw_card_popup(state)
+        if self._trace_open:
+            self._draw_trace()
         self._draw_theme_button()
 
     def toggle_theme(self) -> None:
@@ -306,6 +316,7 @@ class GriductiveApp:
         """Rescan available names while retaining the current game in memory."""
 
         self._choosing_level = True
+        self._trace_open = False
         self._next_auto_step = None
         self._selected_cell = None
         self._buttons.clear()
@@ -346,6 +357,9 @@ class GriductiveApp:
         self._selected_cell = None
         self._hint_cell = None
         self._next_auto_step = None
+        self._trace.clear()
+        self._trace_scroll = 0
+        self._trace_open = False
         self.clear_clue_selection()
 
     def _refresh_levels(self) -> None:
@@ -424,16 +438,21 @@ class GriductiveApp:
             self._set_message("Select a face-down card first.", self._colors.error)
             return None
         cell_id = self._selected_cell
+        before = self._game.get_public_state()
         try:
             if not self._game.has_referee:
                 raise RuntimeError("Chưa có bộ kiểm chứng suy luận.")
             if self._agent is not None:
                 self._agent.deadline = monotonic() + _PROOF_SECONDS
+            if isinstance(self._agent, TracedAgent):
+                self._agent.queries.clear()
             result = self._game.submit_verdict(cell_id, claimed)
         except (RuntimeError, ValueError, AssertionError) as exc:
             self._set_message(str(exc), self._colors.error)
             return None
 
+        if result is MoveResult.ACCEPTED:
+            self._record_trace(before, cell_id, claimed, "Người chơi")
         self._handle_proof_result(cell_id, result, claimed)
         return result
 
@@ -444,6 +463,9 @@ class GriductiveApp:
         self._selected_cell = None
         self._hint_cell = None
         self._next_auto_step = None
+        self._trace.clear()
+        self._trace_scroll = 0
+        self._trace_open = False
         self.clear_clue_selection()
         self._set_message("Puzzle restarted.", self._colors.muted)
 
@@ -452,9 +474,7 @@ class GriductiveApp:
 
         self._game = self._loaded_game
         if isinstance(self._loaded_game, GameEngine) and not self._loaded_game.has_referee:
-            from solver.agent import LogicAgent
-
-            self._agent = LogicAgent()
+            self._agent = TracedAgent()
             # Load callbacks still target the launcher's original engine.
             # Transfer the puzzle directly between engines for proof-based play.
             puzzle = (
@@ -516,6 +536,9 @@ class GriductiveApp:
 
     def _advance_auto_solve(self) -> None:
         agent = self._timed_agent()
+        before = self._game.get_public_state()
+        if isinstance(agent, TracedAgent):
+            agent.queries.clear()
         try:
             proof = agent.step(self._game)
         except (RuntimeError, ValueError, AssertionError) as exc:
@@ -528,6 +551,7 @@ class GriductiveApp:
             self._set_message(f"Auto Solve · {self._auto_steps} bước. {message}", self._colors.muted)
             return
         self._auto_steps += 1
+        self._record_trace(before, proof.cell, proof.verdict, "Auto Solve")
         self.select_cell(proof.cell)
         deduction = f"{proof.cell} là {proof.verdict.value}."
         if self._game.is_solved():
@@ -535,6 +559,132 @@ class GriductiveApp:
         else:
             self._next_auto_step = monotonic() + _AUTO_STEP_INTERVAL
             self._set_message(f"Bước {self._auto_steps} — {deduction}", self._colors.success)
+
+    def _record_trace(
+        self, before: PublicState, cell: str, verdict: Verdict, source: str
+    ) -> None:
+        """Save an accepted deduction using public snapshots and captured queries."""
+
+        _, clue = self._game.get_public_state().revealed[cell]
+        queries = tuple(self._agent.queries) if isinstance(self._agent, TracedAgent) else ()
+        deduction = TraceStep(
+            step=len(self._trace) + 1,
+            active_clue_ids=tuple(
+                before.revealed[cell_id][1].id
+                for cell_id in cell_ids(before.size)
+                if cell_id in before.revealed
+            ),
+            sat_queries=queries,
+            cell=cell,
+            verdict=verdict,
+            new_clue_id=clue.id,
+        )
+        self._trace.append(TraceEntry(deduction, source, clue))
+
+    def _trace_layout(self) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect]:
+        width, height = self._screen.get_size()
+        box = pygame.Rect(30, 70, width - 60, height - 100)
+        close = pygame.Rect(box.right - 100, box.y + 14, 80, 36)
+        content = pygame.Rect(box.x + 24, box.y + 94, box.width - 62, box.height - 120)
+        return box, close, content
+
+    def _handle_trace_event(self, event: pygame.event.Event) -> None:
+        box, close, content = self._trace_layout()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self._trace_open = False
+            elif event.key == pygame.K_HOME:
+                self._trace_scroll = 0
+            elif event.key == pygame.K_END:
+                self._trace_scroll = 10**9
+            elif event.key == pygame.K_PAGEDOWN:
+                self._trace_scroll += content.height
+            elif event.key == pygame.K_PAGEUP:
+                self._trace_scroll = max(0, self._trace_scroll - content.height)
+        elif event.type == pygame.MOUSEWHEEL:
+            self._trace_scroll = max(0, self._trace_scroll - event.y * 66)
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if close.collidepoint(event.pos) or not box.collidepoint(event.pos):
+                self._trace_open = False
+
+    def _trace_lines(self, width: int) -> list[str]:
+        if not self._trace:
+            return ["Chưa có bước suy luận được chấp nhận trong ván này."]
+        paragraphs: list[str] = []
+        ids = cell_ids(self._game.get_public_state().size)
+        for entry in self._trace:
+            step = entry.deduction
+            paragraphs.extend((
+                f"Bước {step.step} · {entry.source} · {step.cell} = {step.verdict.value} · ACCEPTED",
+                "Clue đang hoạt động: " + (", ".join(step.active_clue_ids) or "(trống)"),
+                "Truy vấn SAT trên KB của các thẻ đã mở trước bước này:",
+            ))
+            for index, query in enumerate(step.sat_queries, 1):
+                assumption = "KB"
+                if query.literal is not None:
+                    variable = abs(query.literal)
+                    cell = ids[variable - 1] if 1 <= variable <= len(ids) else f"v{variable}"
+                    status = "CRIMINAL" if query.literal > 0 else "INNOCENT"
+                    assumption += f" AND {cell} = {status} (literal {query.literal})"
+                paragraphs.append(f"  {index}. {assumption} → {query.result}")
+            if not step.sat_queries:
+                paragraphs.append("Bộ kiểm chứng được inject không cung cấp bản ghi truy vấn.")
+            paragraphs.extend((
+                f"Clue mới: {step.new_clue_id} — {describe_clue(entry.new_clue)}",
+                "",
+            ))
+        lines: list[str] = []
+        for paragraph in paragraphs:
+            for line in self._wrap_text(paragraph, self._body_font, width):
+                # Long IDs must remain readable inside the scrollable viewport.
+                while self._body_font.size(line)[0] > width:
+                    chunk = line
+                    while self._body_font.size(chunk)[0] > width:
+                        chunk = chunk[:-1]
+                    lines.append(chunk)
+                    line = line[len(chunk):]
+                lines.append(line)
+        return lines
+
+    def _draw_trace(self) -> None:
+        overlay = pygame.Surface(self._screen.get_size(), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 175))
+        self._screen.blit(overlay, (0, 0))
+        box, close, content = self._trace_layout()
+        pygame.draw.rect(self._screen, self._colors.panel, box, border_radius=12)
+        pygame.draw.rect(self._screen, self._colors.accent, box, 2, border_radius=12)
+        heading = self._heading_font.render(
+            f"Trace suy luận · {len(self._trace)} bước", True, self._colors.text
+        )
+        self._screen.blit(heading, (box.x + 24, box.y + 20))
+        instruction = self._small_font.render(
+            "Cuộn / PgUp / PgDn · Home / End · Esc để đóng", True, self._colors.muted
+        )
+        self._screen.blit(instruction, (box.x + 24, box.y + 58))
+        pygame.draw.rect(self._screen, self._colors.button, close, border_radius=8)
+        label = self._body_font.render("Đóng", True, self._colors.text)
+        self._screen.blit(label, label.get_rect(center=close.center))
+        lines = self._trace_lines(content.width)
+        line_height = self._body_font.get_linesize() + 5
+        maximum = max(0, len(lines) * line_height - content.height)
+        self._trace_scroll = max(0, min(self._trace_scroll, maximum))
+        previous_clip = self._screen.get_clip()
+        self._screen.set_clip(content)
+        for index, line in enumerate(lines):
+            y = content.y + index * line_height - self._trace_scroll
+            if content.y - line_height < y < content.bottom:
+                text = self._body_font.render(line, True, self._colors.text)
+                self._screen.blit(text, (content.x, y))
+        self._screen.set_clip(previous_clip)
+        if maximum:
+            track = pygame.Rect(content.right + 12, content.y, 5, content.height)
+            thumb_height = max(24, content.height * content.height // (len(lines) * line_height))
+            thumb_y = track.y + int((track.height - thumb_height) * self._trace_scroll / maximum)
+            pygame.draw.rect(self._screen, self._colors.button, track, border_radius=2)
+            pygame.draw.rect(
+                self._screen, self._colors.accent,
+                (track.x, thumb_y, track.width, thumb_height), border_radius=2,
+            )
 
     @staticmethod
     def _verdict_feedback(cell_id: str, claimed: Verdict, result: MoveResult) -> str:
@@ -567,6 +717,10 @@ class GriductiveApp:
             self._set_message(self._verdict_feedback(cell_id, claimed, result), self._colors.error)
 
     def _handle_click(self, position: tuple[int, int]) -> None:
+        if self._buttons.get("trace", pygame.Rect(0, 0, 0, 0)).collidepoint(position):
+            self._trace_open = True
+            self._next_auto_step = None
+            return
         if self._buttons.get("levels", pygame.Rect(0, 0, 0, 0)).collidepoint(position):
             self.show_level_selector()
             return
@@ -827,6 +981,7 @@ class GriductiveApp:
             "levels": pygame.Rect(x, 112, panel_width, 42),
             "hint": pygame.Rect(x, 172, column_width, 40),
             "auto": pygame.Rect(other_column, 172, column_width, 40),
+            "trace": pygame.Rect(x, 220, panel_width, 34),
         }
         self._draw_button("levels", "Chọn màn", True)
         self._draw_button("restart", "Restart", bool(state.size))
@@ -834,6 +989,7 @@ class GriductiveApp:
         auto_label = "Dừng giải" if self._next_auto_step is not None else "Auto Solve"
         self._draw_button("hint", "Hint", can_solve)
         self._draw_button("auto", auto_label, can_solve)
+        self._draw_button("trace", f"Xem trace ({len(self._trace)} bước)", bool(state.size))
         y = 260
         label = self._small_font.render("Feedback", True, self._colors.muted)
         self._screen.blit(label, (x, y))
