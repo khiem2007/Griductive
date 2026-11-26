@@ -183,6 +183,42 @@ class EncoderTests(unittest.TestCase):
 
 
 class AgentTests(unittest.TestCase):
+    def test_classify_all_builds_one_kb(self) -> None:
+        state = state_with(fact("B1"))
+        with patch("solver.agent.build_kb", wraps=build_kb) as build:
+            verdicts = LogicAgent().classify_all(state)
+        build.assert_called_once_with(state)
+        self.assertIs(verdicts["A1"], Verdict.UNKNOWN)
+        self.assertIs(verdicts["B1"], Verdict.CRIMINAL)
+        self.assertEqual(set(verdicts), set(cell_ids(3)) - set(state.revealed))
+
+    def test_step_records_skipped_unknown_queries_and_stops_at_first_proof(self) -> None:
+        from unittest.mock import Mock
+
+        before = state_with(fact("B1"))
+        after = PublicState(
+            before.size,
+            before.names,
+            before.jobs,
+            {**before.revealed, "B1": (Verdict.CRIMINAL, fact("C1"))},
+        )
+        game = Mock(spec=["get_public_state", "submit_verdict"])
+        game.get_public_state.side_effect = [before, after]
+        game.submit_verdict.return_value = MoveResult.ACCEPTED
+        with patch("solver.agent.solve", wraps=solve) as query:
+            record = LogicAgent().step(game)
+        self.assertIsNotNone(record)
+        assert record is not None
+        self.assertEqual(record.cell, "B1")
+        self.assertIs(record.verdict, Verdict.CRIMINAL)
+        self.assertEqual(
+            [(q.literal, q.result) for q in record.sat_queries],
+            [(1, "SAT"), (-1, "SAT"), (2, "SAT"), (-2, "UNSAT")],
+        )
+        self.assertEqual(query.call_count, 4)
+        game.submit_verdict.assert_called_once_with("B1", Verdict.CRIMINAL)
+        self.assertEqual(record.new_clue_id, "fact_C1")
+
     def test_stall_rejection_and_timeout_leave_state_unchanged(self) -> None:
         from unittest.mock import Mock
 

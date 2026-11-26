@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from enum import Enum
 
 from core.models import Clue, GameInterface, MoveResult, PublicState, Verdict
 from core.regions import cell_ids
 from solver.dpll import solve
-from solver.encoder import Encoder, KnowledgeBase, build_kb
+from solver.encoder import Encoder, build_kb
 
 
 @dataclass(frozen=True)
@@ -70,38 +70,46 @@ class LogicAgent:
         self.deadline = deadline
         self._steps = 0
 
-    def _classify(
-        self, kb: KnowledgeBase, variable: int
-    ) -> tuple[Verdict, tuple[SatQuery, ...]]:
-        queries: list[SatQuery] = []
-        outcomes: list[bool] = []
+    def _classify_cells(
+        self, state: PublicState, cells: Iterable[str]
+    ) -> Iterator[tuple[str, Verdict, tuple[SatQuery, ...]]]:
+        """Classify requested cells lazily, sharing one KB and recording queries."""
+
+        encoder = Encoder(state.size)
+        kb = build_kb(state)
         clauses = [list(clause) for clause in kb.clauses]
-        for literal in (variable, -variable):
-            result = solve(clauses, kb.num_vars, (literal,), self.deadline)
-            label = (
-                "TIMEOUT"
-                if result.timed_out
-                else "SAT"
-                if result.satisfiable
-                else "UNSAT"
-            )
-            queries.append(SatQuery(literal, label))
-            if result.timed_out or result.satisfiable is None:
-                return Verdict.TIMEOUT, tuple(queries)
-            outcomes.append(result.satisfiable)
-        verdict = {
-            (True, True): Verdict.UNKNOWN,
-            (True, False): Verdict.CRIMINAL,
-            (False, True): Verdict.INNOCENT,
-            (False, False): Verdict.INCONSISTENT,
-        }[(outcomes[0], outcomes[1])]
-        return verdict, tuple(queries)
+        for cell in cells:
+            variable = encoder.var_of(cell)
+            queries: list[SatQuery] = []
+            outcomes: list[bool] = []
+            # Test both statuses against public knowledge to establish entailment.
+            for literal in (variable, -variable):
+                result = solve(clauses, kb.num_vars, (literal,), self.deadline)
+                if result.timed_out or result.satisfiable is None:
+                    label = "TIMEOUT"
+                elif result.satisfiable:
+                    label = "SAT"
+                else:
+                    label = "UNSAT"
+                queries.append(SatQuery(literal, label))
+                if result.timed_out or result.satisfiable is None:
+                    verdict = Verdict.TIMEOUT
+                    break
+                outcomes.append(result.satisfiable)
+            else:
+                verdict = {
+                    (True, True): Verdict.UNKNOWN,
+                    (True, False): Verdict.CRIMINAL,
+                    (False, True): Verdict.INNOCENT,
+                    (False, False): Verdict.INCONSISTENT,
+                }[(outcomes[0], outcomes[1])]
+            yield cell, verdict, tuple(queries)
 
     def classify(self, state: PublicState, cell: str) -> Verdict:
         """Return a forced status, UNKNOWN, INCONSISTENT, or TIMEOUT."""
 
-        variable = Encoder(state.size).var_of(cell)
-        return self._classify(build_kb(state), variable)[0]
+        _, verdict, _ = next(self._classify_cells(state, (cell,)))
+        return verdict
 
     def judge(self, state: PublicState, cell: str, claimed: Verdict) -> MoveResult:
         """Accept only entailed claims, distinguishing contradiction and timeout."""
@@ -118,54 +126,53 @@ class LogicAgent:
             return MoveResult.TIMEOUT
         if verdict is Verdict.UNKNOWN:
             return MoveResult.NOT_PROVABLE
-        return MoveResult.ACCEPTED if verdict is claimed else MoveResult.CONTRADICTED
+
+        if verdict is claimed:
+            return MoveResult.ACCEPTED
+        else:
+            return MoveResult.CONTRADICTED
 
     def hint(self, state: PublicState) -> Hint | None:
         """Return the first forced hidden cell, or None when no proof is found."""
 
         forced = self.next_forced(state)
-        return Hint(*forced) if forced is not None else None
+        if forced is not None:
+            return Hint(*forced)
+        else:
+            return None
 
     def next_forced(self, state: PublicState) -> tuple[str, Verdict] | None:
         """Return the first forced hidden cell in row-major order."""
 
-        forced, _ = self._next_with_queries(state)
-        return forced
-
-    def _next_with_queries(
-        self, state: PublicState
-    ) -> tuple[tuple[str, Verdict] | None, tuple[SatQuery, ...]]:
-        kb = build_kb(state)
-        queries: list[SatQuery] = []
-        for variable, cell in enumerate(cell_ids(state.size), 1):
-            if cell in state.revealed:
-                continue
-            verdict, queried = self._classify(kb, variable)
-            queries.extend(queried)
+        cells = (c for c in cell_ids(state.size) if c not in state.revealed)
+        for cell, verdict, _ in self._classify_cells(state, cells):
             if verdict in {Verdict.TIMEOUT, Verdict.INCONSISTENT}:
-                return None, tuple(queries)
+                return None
             if verdict in {Verdict.CRIMINAL, Verdict.INNOCENT}:
-                return (cell, verdict), tuple(queries)
-        return None, tuple(queries)
+                return cell, verdict
+        return None
 
     def classify_all(self, state: PublicState) -> dict[str, Verdict]:
         """Classify all hidden cells against the same public knowledge base."""
 
-        kb = build_kb(state)
-        return {
-            cell: self._classify(kb, variable)[0]
-            for variable, cell in enumerate(cell_ids(state.size), 1)
-            if cell not in state.revealed
-        }
+        cells = (c for c in cell_ids(state.size) if c not in state.revealed)
+        return {cell: verdict
+                for cell, verdict, _ in self._classify_cells(state, cells)}
 
     def step(self, game: GameInterface) -> TraceStep | None:
         """Submit one proved move and record it only if the game accepts it."""
 
         before = game.get_public_state()
-        forced, queries = self._next_with_queries(before)
-        if forced is None:
+        cells = (c for c in cell_ids(before.size) if c not in before.revealed)
+        queries: list[SatQuery] = []
+        for cell, verdict, queried in self._classify_cells(before, cells):
+            queries.extend(queried)
+            if verdict in {Verdict.TIMEOUT, Verdict.INCONSISTENT}:
+                return None
+            if verdict in {Verdict.CRIMINAL, Verdict.INNOCENT}:
+                break
+        else:
             return None
-        cell, verdict = forced
         if game.submit_verdict(cell, verdict) is not MoveResult.ACCEPTED:
             return None
         after = game.get_public_state()
@@ -179,7 +186,7 @@ class LogicAgent:
                 for c in cell_ids(before.size)
                 if c in before.revealed
             ),
-            queries,
+            tuple(queries),
             cell,
             verdict,
             after.revealed[cell][1].id,
@@ -189,7 +196,10 @@ class LogicAgent:
         """Reveal proved cells until completed, stalled, rejected, or timed out."""
 
         trace: list[TraceStep] = []
-        while (record := self.step(game)) is not None:
+        while True:
+            record = self.step(game)
+            if record is None:
+                break
             trace.append(record)
         return tuple(trace)
 
@@ -211,7 +221,13 @@ def check_uniqueness(
     assert first.model is not None
     ids = cell_ids(size)
     first_solution = {cell: first.model[i] for i, cell in enumerate(ids, 1)}
-    clauses.append([-i if first.model[i] else i for i in range(1, size * size + 1)])
+    blocking_clause: list[int] = []
+    for variable in range(1, size * size + 1):
+        if first.model[variable]:
+            blocking_clause.append(-variable)
+        else:
+            blocking_clause.append(variable)
+    clauses.append(blocking_clause)
     second = solve(clauses, encoder.num_vars, deadline=deadline)
     if second.timed_out:
         return UniquenessResult(UniquenessStatus.TIMEOUT, first_solution)
