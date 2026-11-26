@@ -53,21 +53,6 @@ class GameEngine:
             revealed=revealed,
         )
 
-    def submit_manual(self, cell: str, claimed: Verdict) -> ManualResult:
-        """Check one answer against the key in manual practice mode."""
-
-        if self.has_referee:
-            raise RuntimeError("manual answer checking is disabled when a referee is installed")
-        puzzle = self._require_puzzle()
-        self._validate_claim(cell, claimed)
-        if cell in self._revealed:
-            return ManualResult.ALREADY_REVEALED
-        private_cell = self._cell_by_id(puzzle, cell)
-        if private_cell.status is not claimed:
-            return ManualResult.WRONG
-        self._revealed.add(cell)
-        return ManualResult.CORRECT
-
     def submit_verdict(self, cell: str, claimed: Verdict) -> MoveResult:
         """Submit a claim to an injected proof-based referee."""
 

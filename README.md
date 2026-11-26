@@ -1,69 +1,15 @@
 # Griductive Solver — CSC14003, Project 2
 
-## Solver update — 25/11/2026
-
-`solver/encoder.py` and `solver/agent.py` are implemented and use the existing
-DPLL solver. The older progress notes below describe the manual-game milestone.
-
-- `Encoder`: row-major primary variables (True = CRIMINAL), all eight clue
-  types, polynomial unary counters and XOR gates with fresh auxiliary variables.
-  `encode_clue()` returns clauses; `encoder.num_vars` includes the auxiliaries.
-  Reuse one Encoder when combining clues. `build_kb()` includes only revealed
-  statuses and revealed clues.
-- `LogicAgent`: SAT-based classification, proof referee, hints, row-major forced
-  moves, and automatic play with deduction traces. An unresolved cell is UNKNOWN
-  when both polarities are satisfiable, INCONSISTENT when neither is, and TIMEOUT
-  when a required query expires. `hint()`/`next_forced()` return None and `run()`
-  stops when no further proof is available. `classify()`/`classify_all()` expose
-  the reason. `Hint.relevant_clue_id` is None because deductions may require
-  several clues; trace records include all active clue IDs, not a minimal proof.
-- `check_uniqueness()`: solves the complete clue set twice, blocking only the
-  primary assignment after the first solution. Auxiliary differences cannot
-  incorrectly count as a second solution.
-
-Use the proof-based engine programmatically:
-
-```python
-import time
-from core.engine import GameEngine
-from core.models import load_puzzle
-from solver.agent import LogicAgent, check_uniqueness
-
-puzzle = load_puzzle("puzzles/3x3_01_easy.json")
-agent = LogicAgent(deadline=time.monotonic() + 10)
-game = GameEngine(puzzle, referee=agent)
-trace = agent.run(game)
-print(game.is_solved(), len(trace))
-result = check_uniqueness(
-    puzzle.size, [cell.clue for cell in puzzle.cells],
-    deadline=time.monotonic() + 10,
-)
-print(result.status)
-```
-
-Deadlines are absolute `time.monotonic()` timestamps passed to DPLL; encoding
-finishes before SAT timeout checks. No extra dependencies are required.
-`python main.py` still starts manual practice; this update does not enable GUI
-Hint/Auto Solve controls. Agent trace step numbers count accepted moves over
-the lifetime of that agent instance.
-
-Run focused tests with:
-
-```powershell
-python -B -m unittest tests.test_encoder_agent tests.test_dpll tests.test_solver_skeletons
-```
-
 Đồ án **Nhập môn Trí tuệ nhân tạo**: xây dựng trò chơi Griductive và bộ giải suy luận bằng logic mệnh đề, mã hóa CNF và thuật toán DPLL tự cài đặt.
 
-**Cập nhật tiến độ: 21/11/2026.** Phiên bản hiện tại đã có game luyện tập thủ công bằng Pygame, bộ đọc/kiểm tra puzzle JSON và các giao diện dành cho bộ giải. Phần mã hóa CNF, DPLL và suy luận tự động chưa được triển khai.
+**Cập nhật tiến độ ngày 26/11/2026.** Mã hóa CNF, DPLL và Logic Agent đã hoạt động qua API Python. Agent giải được **15/15 puzzle** từ thông tin công khai. Khi kiểm tra riêng toàn bộ clue, **13/15 puzzle có đúng một nghiệm**.
 
-> Chế độ đang chạy là **Manual practice — answer check**: so sánh lựa chọn với đáp án lưu trong puzzle. Đoán đúng vẫn được lật thẻ; trả lời sai cũng có thể giúp suy ra trạng thái còn lại. Vì vậy, chế độ này **chưa đáp ứng yêu cầu không đoán (no-guess)** của đề và chưa hoàn thành toàn bộ phần game được chấm điểm.
+> `python main.py` mở **Manual practice — answer check**. GUI lật thẻ nếu lựa chọn khớp đáp án, kể cả khi người chơi đoán. **Hint** và **Auto Solve** vẫn bị vô hiệu hóa. Chế độ chứng minh đã chạy qua API, còn yêu cầu chơi không đoán trên GUI của đề chưa được đáp ứng trong luồng khởi động mặc định.
 
 ## 1. Tài liệu và phạm vi
 
-- [AI - Project 2.pdf](<AI - Project 2.pdf>): yêu cầu học phần, tiêu chí đánh giá và quy cách nộp bài.
-- [AGENTS.md](AGENTS.md): quy ước phát triển hiện tại; giới hạn phần triển khai ở game luyện tập và giữ thuật toán tự động cho sinh viên thực hiện.
-- README này đối chiếu hai tài liệu trên với mã nguồn và kết quả kiểm thử hiện có. Trạng thái “đã có” không đồng nghĩa với việc hoàn thành tiêu chí chấm điểm tương ứng.
+- Đề học phần quy định yêu cầu, tiêu chí đánh giá và quy cách nộp bài. [AI - Project 2.pdf](<AI - Project 2.pdf>)
+- Mốc luyện tập thủ công sau Step 1 dành thuật toán tự động cho sinh viên. Các mô-đun solver hiện đã có phần triển khai. [AGENTS.md](AGENTS.md)
 
 Theo `AGENTS.md`, puzzle chơi được do người dùng chuẩn bị và lựa chọn. Ứng dụng hỗ trợ khởi động khi chưa có puzzle, không ghi đè puzzle trong lúc chơi và hoạt động ở chế độ thủ công mà không cần import `solver`.
 
@@ -87,26 +33,25 @@ Với biến `C_i = True` nghĩa là nhân vật `i` là tội phạm:
 ```text
 KB_t = CNF(clue đã mở) AND các unit clause của trạng thái đã chứng minh
 
-Kiểm tra KB_t trước: UNSAT => INCONSISTENT
-KB_t AND NOT C_i là UNSAT => CRIMINAL
-KB_t AND C_i là UNSAT     => INNOCENT
-Cả hai phép thử đều SAT   => UNKNOWN
+KB_t AND C_i          KB_t AND NOT C_i       Kết luận
+SAT                   UNSAT                  CRIMINAL
+UNSAT                 SAT                    INNOCENT
+SAT                   SAT                    UNKNOWN
+UNSAT                 UNSAT                  INCONSISTENT
 ```
 
 ### 2.2. Các hạng mục được đánh giá
 
-| Hạng mục | Điểm | Yêu cầu chính |
+| Hạng mục trong đề | Điểm | Tiến độ đã kiểm chứng |
 | --- | ---: | --- |
-| Game có GUI | 10 | Bàn cờ, gọi trạng thái, kiểm tra bằng chứng, lật thẻ, highlight clue; Load, Restart, Hint, Auto Solve; tách Engine và Agent |
-| Biểu diễn logic và CNF | 10 | Ánh xạ biến xác định, kiểm tra clue/vùng, tự mã hóa clue, thêm unit clause, thống kê biến/mệnh đề, có evaluator ngữ nghĩa trực tiếp |
-| DPLL tự cài đặt | 10 | Unit propagation, phát hiện xung đột, chọn biến xác định, phân nhánh/đệ quy/quay lui, trả SAT kèm phép gán đầy đủ hoặc UNSAT; thống kê tìm kiếm |
-| Logic Agent | 20 | Phân loại ô chưa mở, chỉ chọn kết luận bắt buộc, cập nhật KB, trace suy luận, Hint và kiểm tra nghiệm duy nhất riêng |
-| Thực nghiệm | 10 | Nhiều puzzle 3×3 và 4×4; có thể thêm 5×5; cùng tập dữ liệu khi so sánh; công bố cả thất bại và timeout |
-| Báo cáo PDF | 30 | Phân công và tỷ lệ hoàn thành từng thành viên, mô hình bài toán, dẫn xuất CNF, thuật toán, thực nghiệm, hạn chế, tài liệu tham khảo và phụ lục sử dụng AI |
-| Video demo | 10 | Khoảng 5–10 phút, trình diễn GUI, chơi tay và bộ giải; thuyết minh/phụ đề tiếng Việt hoặc tiếng Anh |
-| **Tổng** | **100** | Chi tiết tại trang 5–8 của đề |
-
-Ngoài sáu loại clue cốt lõi, mỗi nhóm phải triển khai **ít nhất hai mở rộng khác nhau**. Hiện mã nguồn có ngữ nghĩa cho `PARITY`, `COMPARE`, `BOUNDARY`, `INTERSECTION`, nhưng chưa có mã hóa CNF và kiểm thử tích hợp bộ giải cho các mở rộng này.
+| §4.1 Game có GUI | 10 | Có bàn cờ, tọa độ, tên/nghề, trạng thái và clue đã mở, highlight, Load và Restart. Engine tách khỏi Agent. GUI kiểm tra đáp án theo mặc định. Luồng kiểm chứng logic đã chạy khi inject Agent trực tiếp, còn Hint và Auto Solve chưa kết nối với nút bấm. |
+| §4.2 Biểu diễn logic và CNF | 10 | Có ánh xạ biến xác định, kiểm tra clue/vùng, đánh giá ngữ nghĩa trực tiếp, mã hóa tự động và unit clause từ thẻ mở. API trả số biến chính/phụ và số mệnh đề. Đã kiểm thử sáu loại cốt lõi cùng hai mở rộng `PARITY` và `COMPARE`, có hỗ trợ vùng `BOUNDARY` và `INTERSECTION`. |
+| §4.3 DPLL tự cài đặt | 10 | Có lan truyền đơn vị, phát hiện xung đột, chọn biến xác định, phân nhánh đệ quy và quay lui, kết quả SAT kèm phép gán đầy đủ hoặc UNSAT, timeout và thống kê. Đã chạy test đối chiếu vét cạn trên CNF nhỏ. |
+| §4.4 Logic Agent | 20 | Có phân loại, chọn kết luận bắt buộc, cập nhật KB qua từng thẻ mở, trace, Hint qua API và kiểm tra duy nhất riêng. Đã giải 15/15 màn từ trạng thái công khai và tìm thấy 2 màn có nhiều nghiệm khi xét riêng toàn bộ clue. |
+| §4.5 Thực nghiệm | 10 | Có puzzle cả ba kích thước và thống kê từng lần gọi DPLL. Chưa có kết quả thực nghiệm tổng hợp theo từng puzzle hoặc bảng so sánh trên cùng bộ dữ liệu. |
+| §4.6 Báo cáo PDF | 30 | Chưa thấy báo cáo trong repo. Đề yêu cầu phân công và tỷ lệ hoàn thành, mô hình, dẫn xuất CNF, thuật toán, thực nghiệm, hạn chế, tài liệu tham khảo và phụ lục sử dụng AI. |
+| §4.7 Video demo | 10 | Chưa thấy video hoặc liên kết trong repo. Đề yêu cầu khoảng 5–10 phút, trình diễn GUI, chơi tay và chạy bộ giải, có lời thuyết minh hoặc phụ đề tiếng Việt hay tiếng Anh. |
+| **Tổng theo đề** | **100** | Xem trang 5–8 của [đề bài](<AI - Project 2.pdf>). |
 
 Thực nghiệm cuối cùng cần ghi: số biến chính/phụ, số clause, số lần gọi SAT, số decisions/propagations/backtracks, số bước suy luận hoặc đợt mở thẻ, thời gian chạy. Kiểm thử hiện tại chưa thay thế thực nghiệm này. Các thuật toán chính phải do sinh viên tự cài đặt; thư viện hỗ trợ GUI/cấu trúc dữ liệu được phép dùng. Pure-literal elimination và heuristic phân nhánh nâng cao là tùy chọn.
 
@@ -126,22 +71,24 @@ Griductive/
 │   └── engine.py              # Trạng thái ván chơi, kiểm tra tay, ranh giới referee
 ├── gui/
 │   ├── __init__.py
-│   └── app.py                 # GUI Pygame, chọn file/nhập đường dẫn, sự kiện
+│   ├── app.py                 # GUI Pygame, danh sách màn, bàn chơi và điều khiển
+│   └── avatars.py             # Vẽ chân dung nhân vật
 ├── solver/
 │   ├── __init__.py
-│   ├── dpll.py                # Kiểu kết quả và khung solve(), chưa có thuật toán
-│   ├── encoder.py             # Ánh xạ biến đã có; mã hóa/KB còn là khung
-│   └── agent.py               # Kiểu kết quả và khung LogicAgent/uniqueness
+│   ├── dpll.py                # DPLL, mô hình SAT, timeout và thống kê
+│   ├── encoder.py             # Mã hóa clue thành CNF và xây KB công khai
+│   └── agent.py               # Phân loại, referee, Hint, trace và kiểm tra duy nhất
 ├── puzzles/
-│   └── 3x3_easy.json           # Puzzle hoàn chỉnh hiện có
-├── tests/
-│   ├── __init__.py
-│   ├── test_manual_game.py    # 6 test Engine, referee, bảo vệ dữ liệu
-│   ├── test_gui.py            # 7 test GUI headless và điều phối theo chế độ
-│   ├── test_level_selection.py # 7 test chọn/đổi màn, phân trang và khởi động
-│   ├── test_solver_skeletons.py # 3 test import/khung giao diện
-│   └── verify_puzzles.py      # 4 test xác minh Step 1, chạy riêng khi cần
-└── generate_puzzles.py        # Tệp di sản Step 1, không dùng trong luồng hiện tại
+│   ├── *.json                 # 7 màn 3×3, 5 màn 4×4, 3 màn 5×5
+│   └── SOURCES.txt            # Nguồn các màn hiện có
+└── tests/
+    ├── test_manual_game.py    # Engine, referee và bảo vệ dữ liệu
+    ├── test_gui.py            # GUI headless và điều phối theo chế độ
+    ├── test_level_selection.py # Chọn/đổi màn, phân trang và khởi động
+    ├── test_solver_skeletons.py # Smoke test các kiểu kết quả và API
+    ├── test_dpll.py           # DPLL và đối chiếu với vét cạn
+    ├── test_encoder_agent.py  # Mã hóa CNF, Agent và các puzzle trong repo
+    └── verify_puzzles.py      # Xác minh Step 1 cho các màn 3×3
 ```
 
 ### 3.1. Trách nhiệm và luồng dữ liệu
@@ -165,7 +112,7 @@ GUI đọc engine.has_referee trước mỗi lần gửi kết luận:
 - `submit_manual()` trả `CORRECT`, `WRONG` hoặc `ALREADY_REVEALED`; chỉ được dùng khi chưa có referee.
 - `submit_verdict()` dành cho referee chứng minh logic. `ACCEPTED` mở thẻ; `NOT_PROVABLE` nghĩa là chưa buộc được trạng thái nào, `CONTRADICTED` nghĩa là trạng thái ngược lại được chứng minh. Các kết quả từ chối giữ nguyên bàn cờ. Engine còn kiểm tra kết luận được chấp nhận có khớp đáp án lưu sẵn trước khi mở thẻ.
 - Gọi sai chế độ gây `RuntimeError`. Với thẻ đã mở, nhánh chứng minh trả `ALREADY_REVEALED` mà không gọi referee.
-- `core` độc lập với `gui` và `solver`. Bộ giải tương lai chỉ dùng `core.models` và `core.regions` từ tầng core; không truy cập dữ liệu riêng của Engine.
+- `core` độc lập với `gui` và `solver`. Bộ giải chỉ import `core.models` và `core.regions` từ tầng core. Agent nhận `PublicState` và gửi kết luận qua `GameInterface`.
 
 ## 4. Cài đặt và chạy
 
@@ -187,7 +134,7 @@ python "C:\duong dan\Griductive\main.py"
 Nếu `puzzles/` chưa tồn tại hoặc đang trống, màn hình hiển thị: **“Thêm file JSON vào thư mục puzzles/ hoặc chọn Mở file JSON”**. Có thể mở thẳng puzzle bằng tham số dòng lệnh:
 
 ```powershell
-python main.py puzzles/3x3_easy.json
+python main.py puzzles/3x3_01_easy.json
 ```
 
 Hoặc truyền đường dẫn khác; đặt trong dấu ngoặc kép nếu đường dẫn có khoảng trắng:
@@ -205,7 +152,7 @@ Trên Windows có nhiều Python, dùng cùng một interpreter cho cả cài đ
 3. Đúng đáp án: mở đúng thẻ vừa chọn và hiện clue. Sai đáp án: báo `WRONG`, giữ thẻ úp và cho thử lại.
 4. Chọn thẻ đã mở để highlight các ô liên quan; vùng chi tiết bên phải hiển thị clue được chọn, hữu ích trên bàn 5×5.
 5. Nhấn **Restart** để khôi phục đúng tập thẻ mở ban đầu. Khi tất cả thẻ mở, game báo hoàn thành.
-6. **Hint** và **Auto Solve** đang bị vô hiệu hóa, chờ triển khai và kết nối Agent.
+6. **Hint** và **Auto Solve** đang bị vô hiệu hóa trên GUI. Có thể gọi các chức năng tương ứng qua API ở mục 6.
 7. Trong ván, nhấn **Chọn màn** để trở lại danh sách và quét lại thư mục, nhận các file mới. Chọn màn khác và bấm **Chơi** để bắt đầu ván mới. **Tiếp tục ván** quay về ván đang giữ trong bộ nhớ. **Restart** luôn khôi phục đúng các thẻ `revealed` của màn đã nạp thành công gần nhất.
 
 Hủy nạp hoặc nạp file lỗi/đã bị xóa giữ nguyên ván đang chơi. Thông báo lỗi nêu tên file; bạn có thể chọn màn khác hoặc **Tiếp tục ván**. Chỉ thay bàn sau khi loader kiểm tra thành công toàn bộ file. Đường dẫn JSON hợp lệ trên dòng lệnh bỏ qua màn hình chọn màn; đường dẫn lỗi trở về màn hình chọn màn kèm thông báo. Game chỉ đọc puzzle, không sinh màn hoặc lưu đè tiến trình vào JSON. Các test dùng puzzle mẫu hiện tại cần giữ file mẫu đó.
@@ -260,7 +207,7 @@ Mọi clue có `id` duy nhất và trường `type`.
 
 ### 5.3. Chuẩn bị một bàn hoàn chỉnh
 
-1. Tham khảo [puzzles/3x3_easy.json](puzzles/3x3_easy.json), hiện có 9 ô và hai thẻ mở ban đầu `A1`, `B3`.
+1. Tham khảo [puzzles/3x3_01_easy.json](puzzles/3x3_01_easy.json), có 9 ô và hai thẻ mở ban đầu `A1`, `B3`.
 2. Chọn kích thước; khai báo đủ 9, 16 hoặc 25 ô. Ví dụ 3×3 phải có `A1, B1, C1, A2, B2, C2, A3, B3, C3`.
 3. Mỗi ô phải có đủ `id`, `name`, `job`, `status`, `revealed`, `clue`; tên/nghề là chuỗi không rỗng, `revealed` là Boolean, trạng thái chỉ là `CRIMINAL` hoặc `INNOCENT`.
 4. Đặt ID ô và ID clue không trùng; mọi tọa độ và vùng phải nằm trong bàn. Với clue đếm, `k` là số nguyên từ `0` đến số ô trong vùng.
@@ -269,86 +216,86 @@ Mọi clue có `id` duy nhất và trường `type`.
 
 Loader dùng `evaluate_clue_directly()` để kiểm tra từng clue trên **một đáp án được cung cấp**, không liệt kê mọi phép gán. Nạp thành công chưa chứng minh puzzle có nghiệm duy nhất hoặc giải được từng bước không đoán.
 
-## 6. Tiến độ hiện tại
+## 6. Bộ giải và tích hợp
 
-| Thành phần | Trạng thái từ mã nguồn/kiểm thử |
-| --- | --- |
-| Mô hình dữ liệu, enum và protocol | Đã có `Puzzle`, `Cell`, `Clue`, `Region`, `PublicState`, `GameInterface`, `Referee`, các kiểu verdict/kết quả |
-| Đọc và kiểm tra JSON | Đã có cho 3×3, 4×4, 5×5; kiểm tra cấu trúc, tham chiếu và tính đúng của clue theo đáp án |
-| Ngữ nghĩa clue/vùng | Đã có evaluator trực tiếp cho 6 clue cốt lõi, `PARITY`, `COMPARE`; hỗ trợ thêm biên và giao vùng |
-| Engine chơi thủ công | Đã có nạp, trả lời đúng/sai, từ chối ô đã mở, Restart, phát hiện hoàn thành và trạng thái công khai |
-| GUI luyện tập | Đã có bàn cờ, Load, chọn trạng thái, highlight, thông báo và vùng chi tiết clue; đã kiểm thử headless |
-| Ranh giới referee | Đã có inject và điều phối theo `has_referee`; test bằng referee giả lập, chưa có referee suy luận thật |
-| Ánh xạ biến | `Encoder.var_of()`/`cell_of()` hoạt động, đánh số từ 1 theo hàng; chưa mã hóa clue |
-| CNF và KB | `encode_clue()` và `build_kb()` còn `NotImplementedError` |
-| DPLL | Có kiểu kết quả/thống kê và chữ ký `solve()`; thân thuật toán còn `NotImplementedError` |
-| Logic Agent, Hint, Auto Solve | Có khung API và kiểu trace/hint; chưa có suy luận hoặc chạy giải tự động |
-| Kiểm tra nghiệm duy nhất | API chính thức `check_uniqueness()` chưa triển khai; chỉ có verifier vét cạn 3×3 riêng của Step 1 |
-| Bộ puzzle | Có một file 3×3 hoàn chỉnh; chưa có file 4×4/5×5 trong `puzzles/` |
-| Thực nghiệm và thống kê bộ giải | Chưa có bộ thực nghiệm/bảng kết quả trong cấu trúc hiện tại |
-| Báo cáo, phân công, video demo | Chưa thấy báo cáo PDF, bảng phân công hoặc liên kết video trong các tệp hiện tại |
+- Encoder đánh số biến chính từ 1 theo thứ tự hàng, `True` biểu thị `CRIMINAL`. `encode_clue()` dùng bộ đếm ngưỡng, cổng XOR và biến phụ mới. Khi ghép nhiều clue, dùng cùng một `Encoder` để các biến phụ có ID riêng. `build_kb()` mã hóa clue và trạng thái của các thẻ đã mở. [solver/encoder.py](solver/encoder.py)
+- `solve(clauses, num_vars, assumptions=(), deadline=None)` chạy DPLL. `SolveResult` trả mô hình khi SAT, cờ timeout và số lần quyết định, lan truyền, quay lui cùng thời gian chạy. [solver/dpll.py](solver/dpll.py)
+- Agent có `classify()`, `classify_all()`, `judge()`, `hint()`, `next_forced()`, `step()`, `run()` và `check_uniqueness()`. Agent chọn ô theo thứ tự hàng. `TraceStep` ghi bước, các ID clue đang hoạt động, truy vấn SAT dùng để tìm nước đi, kết luận và ID clue mới. Referee kiểm tra lại nước đi khi gửi vào Engine, vì vậy đếm truy vấn trong trace sẽ bỏ sót các lời gọi SAT ở lần kiểm tra này. [solver/agent.py](solver/agent.py)
+- `hint()` trả ô có thể chứng minh và trạng thái của ô, với `relevant_clue_id` hiện là `None`. `run()` trả danh sách bước đã được chấp nhận và dừng khi hoàn thành, hết nước có thể chứng minh, gặp tri thức mâu thuẫn, timeout hoặc nước đi bị từ chối. API hiện trả trace mà chưa kèm mã lý do dừng.
+- `check_uniqueness()` xét toàn bộ clue và chặn phép gán các biến chính sau nghiệm đầu tiên. Hai phép gán chỉ khác ở biến phụ vẫn biểu diễn cùng một lời giải.
 
-### Phần sinh viên cần triển khai tiếp
+Điểm tích hợp referee nằm trong `create_app()`, hiện khởi tạo `GameEngine(puzzle=None, referee=None)`. GUI đã đọc `has_referee` để điều phối thao tác gửi kết luận. [main.py](main.py)
 
-- **`solver/encoder.py`**: `Encoder.encode_clue(clue)` và `build_kb(state)`; chuyển clue công khai thành CNF, thêm unit clause, quản lý biến phụ và thống kê. `KnowledgeBase` và `EncoderStatistics` đã có.
-- **`solver/dpll.py`**: `solve(clauses, num_vars, assumptions=(), deadline=None) -> SolveResult`; bổ sung DPLL, model đầy đủ, timeout và `SolveStatistics`.
-- **`solver/agent.py`**: `LogicAgent.classify`, `judge`, `hint`, `next_forced`, `classify_all`, `step`, `run` và hàm `check_uniqueness(size, clues)`. Các kiểu `Hint`, `SatQuery`, `TraceStep`, `UniquenessResult` đã có.
-- **Tích hợp GUI**: sau khi Agent hoạt động, nối Hint/Auto Solve, cập nhật hiển thị theo chế độ, trace và các trạng thái kết thúc.
-- **Hoàn thiện bài nộp**: bổ sung puzzle do người dùng chuẩn bị cho thực nghiệm, kiểm thử thuật toán, đo thống kê, viết báo cáo và quay video.
-
-Điểm tích hợp referee nằm trong `create_app()` của `main.py`, hiện là `GameEngine(puzzle=None, referee=None)`. Khi `LogicAgent.judge()` hoàn thiện, có thể inject như sau:
+Có thể chạy thử chế độ chứng minh bằng đoạn Python dưới đây từ thư mục gốc.
 
 ```python
-from solver.agent import LogicAgent
+from time import monotonic
+from core.engine import GameEngine
+from core.models import load_puzzle
+from solver.agent import LogicAgent, check_uniqueness
 
-engine = GameEngine(puzzle=None, referee=LogicAgent())
+puzzle = load_puzzle("puzzles/3x3_01_easy.json")
+agent = LogicAgent(deadline=monotonic() + 20)
+game = GameEngine(puzzle, referee=agent)
+trace = agent.run(game)
+result = check_uniqueness(
+    puzzle.size, [card.clue for card in puzzle.cells], deadline=monotonic() + 20
+)
+print(game.is_solved(), len(trace), result.status.value)  # True 7 UNIQUE
 ```
 
-Đây là hướng tích hợp tương lai; thay đổi này hiện sẽ gọi các hàm chưa được triển khai. GUI đã chọn đúng nhánh `submit_verdict()` khi có referee, nhưng hai nút Hint/Auto Solve vẫn cần được nối riêng.
+Deadline là mốc tuyệt đối từ `time.monotonic()` dùng chung cho các lần gọi SAT trong một lượt giải. Mã hóa chạy trước các kiểm tra deadline trong DPLL. Số thứ tự bước tăng theo vòng đời của một `LogicAgent`.
+
+### Đối chiếu với mốc thủ công trong AGENTS.md
+
+- Đã có danh sách tên màn sắp xếp, nạp và kiểm tra khi bấm chơi, quét lại khi mở danh sách, giữ tiến độ khi nạp lỗi, tiếp tục ván và tham số mở JSON trực tiếp. Khởi động thiếu thư mục hoặc chưa có JSON vẫn vào được màn chọn.
+- AGENTS.md yêu cầu bấm tên màn để chơi ngay. Hiện cần bấm thêm **Chơi** hoặc `Enter`. Khi thư mục trống, giao diện hiện **“Thêm file JSON vào thư mục puzzles/ hoặc chọn Mở file JSON”**. Câu yêu cầu là **“Chưa có màn chơi. Hãy thêm file JSON vào thư mục puzzles/.”**
+- Chơi thủ công và chơi có referee trả hai kiểu kết quả riêng. GUI luyện tập giải thích vì sao Hint và Auto Solve bị tắt. Chế độ chứng minh hiện có thêm bước kiểm tra nhất quán với lời giải lưu sẵn trong Engine sau khi referee trả `ACCEPTED`.
 
 ## 7. Kiểm thử và kết quả kiểm chứng
 
-Chạy từ thư mục gốc `Griductive`:
+Chạy từ thư mục gốc `Griductive`. Trên Windows, các lệnh dưới đây dùng Python 3.12. Có thể thay `py -3.12` bằng `python` trỏ tới cùng môi trường.
 
 ```powershell
-python -m unittest discover -s tests -v
+py -3.12 -B -m unittest discover -s tests -v
+py -3.12 -B -m unittest tests.test_dpll tests.test_encoder_agent tests.test_solver_skeletons
+py -3.12 -B -m tests.verify_puzzles
+py -3.12 -B main.py --help
 ```
 
-Lệnh trên chạy 23 test trong các tệp `test_*.py`. Các test GUI tự đặt `SDL_VIDEODRIVER=dummy`, không mở cửa sổ tương tác. Trong đó, 7 test mới ở `test_level_selection.py` dùng file JSON fixture tạm để kiểm tra chọn màn thứ hai rồi quay lại màn thứ nhất, Restart, quét lại, thư mục trống/thiếu, file lỗi/đã xóa, duyệt 30 màn qua các trang, mở file ngoài danh sách và CLI từ thư mục khác. Fixture được dọn sau test, không ghi vào `puzzles/` thật.
+### 7.1. Kết quả chạy ngày 26/11/2026
 
-Verifier Step 1 là lệnh tùy chọn, chạy riêng:
+Đã chạy trên Windows với Python 3.12.10 và gói `pygame` 2.6.0 có sẵn. Bản cài mới theo `requirements.txt` (`pygame-ce`) chưa được kiểm tra trong lần rà soát này.
 
-```powershell
-python -m tests.verify_puzzles
-```
-
-Verifier này vét cạn các phép gán 3×3 để kiểm tra clue, nghiệm duy nhất và khả năng mở thẻ không đoán. Nó **không phải DPLL hoặc Agent cần nộp**. Hiện verifier yêu cầu có puzzle và chỉ chấp nhận file 3×3 trong `puzzles/`; không dùng nguyên trạng cho thư mục có puzzle 4×4/5×5.
-
-### 7.1. Kết quả chạy ngày 21/11/2026
-
-Môi trường kiểm chứng: Windows, Python **3.12.10**, module Pygame **2.6.0** đang cài sẵn. Dependency khai báo vẫn là `pygame-ce>=2.5,<3`; lần rà soát này không xác nhận một lượt cài mới dependency trên môi trường sạch.
-
-| Lệnh thực tế | Kết quả |
+| Lệnh | Kết quả |
 | --- | --- |
-| `py -3.12 -B -m unittest discover -s tests -v` | **23/23 đạt**: 6 Engine + 7 GUI + 7 chọn màn + 3 khung solver |
-| `py -3.12 -B -m tests.verify_puzzles` | **4/4 đạt** với dữ liệu hiện có |
-| `py -3.12 -B -m core.engine` | Thành công, kiểm tra khởi tạo Engine với puzzle mẫu |
-| `py -3.12 -B -m solver.dpll` | Thành công, smoke test kiểu dữ liệu và khung `solve()` |
-| `py -3.12 -B -m solver.encoder` | Thành công, smoke test ánh xạ biến |
-| `py -3.12 -B -m solver.agent` | Thành công, smoke test kiểu dữ liệu và khung Agent |
-| `py -3.12 -B main.py --help` | Thành công, hiển thị tham số puzzle tùy chọn |
+| `py -3.12 -B -m unittest discover -s tests -v` | **27/38 đạt** ngoài sandbox. 10 lỗi đọc puzzle và 1 assertion lỗi trong test CLI đều do các test còn tham chiếu tên cũ `3x3_easy.json` hoặc `3x3_easy`. |
+| `py -3.12 -B -m unittest tests.test_dpll tests.test_encoder_agent tests.test_solver_skeletons` | **18/18 đạt**. Có kiểm tra SAT/UNSAT/timeout, đối chiếu CNF với evaluator, phân loại, trace và tự giải tất cả puzzle trong repo. |
+| `py -3.12 -B -m tests.verify_puzzles` | **4/4 đạt**. Verifier Step 1 nạp và kiểm tra JSON, rồi vét cạn nghiệm và mô phỏng suy luận riêng cho 7 màn 3×3. |
+| `py -3.12 -B main.py --help` | Hiển thị tham số tùy chọn `puzzle`. |
 
-Sandbox Windows chặn quyền truy cập thư mục fixture tạm. Chạy lại bộ 23 test ngoài sandbox đạt toàn bộ. Các smoke test solver chỉ xác nhận giao diện import được và hành vi khung đúng dự kiến, **không chứng minh thuật toán hoạt động**.
+Các tham chiếu cũ làm lỗi 4 test GUI, 6 test Engine và 1 test CLI. Lượt chạy trong sandbox còn gặp lỗi quyền truy cập thư mục fixture tạm.
 
-### 7.2. Phạm vi đã kiểm chứng
+### 7.2. Kiểm tra bộ puzzle
 
-- **Với file thật `puzzles/3x3_easy.json`**: nạp bằng loader; Engine trả lời sai/đúng, gửi lại ô đã mở, Restart và mở hết bàn; GUI headless điều phối sai rồi đúng, chọn lặp lại, highlight clue và nhánh referee giả lập.
-- **Với file JSON hỏng tạm thời**: GUI gọi loader thật giữa ván và giữ nguyên trạng thái khi nạp lỗi.
-- **Với file fixture tạm và loader thật**: chọn màn thứ hai 4×4, quay lại màn thứ nhất 3×3 và Restart; thư mục trống/thiếu; JSON hỏng, sai schema và file bị xóa cạnh file hợp lệ; quét lại thấy file mới; phân trang qua 30 tên; mở file ngoài danh sách, hủy và nhập đường dẫn dự phòng. Test CLI chạy từ thư mục khác xác nhận tìm đúng `puzzles/` cạnh `main.py`, mở thẳng file hợp lệ và hiển thị lỗi khi đường dẫn sai.
-- **Ảnh render headless**: đã kiểm tra bố cục màn chọn với puzzle thật `3x3_easy.json`, trạng thái thư mục trống và bàn chơi; font ưu tiên Tahoma/DejaVu Sans để hiển thị tiếng Việt. Đây là kiểm tra ảnh render, không phải thao tác trực tiếp với cửa sổ hệ điều hành.
-- **Với fixture trong bộ nhớ/callback giả lập**: màn hình trống; nạp bàn thứ hai, hủy/đường dẫn lỗi; vẽ bàn 3×3, 4×4, 5×5, nhận click tổng hợp và chạy một frame. Chưa có file puzzle thật 4×4/5×5 để kiểm chứng nạp đầu cuối.
-- **Ranh giới dữ liệu**: test dùng tiến trình Python mới xác nhận sau một nước chơi thủ công không có `solver`/`solver.*` trong `sys.modules`; hash puzzle không đổi. Referee giả lập kiểm tra từ chối, timeout/lỗi, gọi sai chế độ và thẻ đã mở không gọi `judge()`.
-- **Chưa kiểm chứng trực quan trong lần rà soát này**: cửa sổ GUI thật, hộp thoại chọn file của hệ điều hành, nhập đường dẫn qua bàn phím, khả năng đọc đủ clue rất dài trên màn hình nhỏ. Code hiện ngắt vẽ chi tiết khi hết chiều cao panel; cần kiểm tra thêm với clue dài.
+| Kích thước | Nạp hợp lệ | Giải không đoán từ thẻ mở sẵn | Nghiệm duy nhất khi chỉ xét toàn bộ clue |
+| --- | ---: | ---: | ---: |
+| 3×3 | 7/7 | 7/7 | 7/7 |
+| 4×4 | 5/5 | 5/5 | 4/5 |
+| 5×5 | 3/3 | 3/3 | 2/3 |
+| **Tổng** | **15/15** | **15/15** | **13/15** |
+
+Đã gọi `LogicAgent.run()` và `check_uniqueness()` riêng cho từng file như ví dụ ở mục 6. Hai ngoại lệ là [4x4_04_medium.json](puzzles/4x4_04_medium.json) và [5x5_03_hard.json](puzzles/5x5_03_hard.json). Với mỗi file, evaluator trực tiếp xác nhận hai phép gán khác nhau đều thỏa toàn bộ clue. Thêm trạng thái các thẻ mở sẵn dưới dạng `FACT` cho kết quả duy nhất, khớp đáp án lưu. Hai màn vì vậy giải được từ bàn ban đầu nhưng chưa đạt kiểm tra duy nhất chỉ với toàn bộ clue theo §4.4.
+
+Tên hiển thị của các nhân vật trong cả 15 bàn đã theo thứ tự bảng chữ cái khi duyệt theo hàng và bỏ qua hoa/thường. Loader chuẩn hóa theo tọa độ. Khi thêm màn, thứ tự tên vẫn do người soạn dữ liệu quyết định. Nguồn của các màn được ghi trong [puzzles/SOURCES.txt](puzzles/SOURCES.txt).
+
+### 7.3. Phạm vi kiểm tra GUI
+
+- **File thật, SDL dummy và sự kiện tổng hợp.** Đã mở selector từ thư mục cha và kiểm tra đủ 15 tên sắp xếp trước khi chọn. Đã chọn màn thứ hai `3x3_02_easy`, gửi sai rồi đúng, chọn lặp lại thẻ đã mở và kiểm tra highlight. Đã kiểm tra nút Hint/Auto Solve bị khóa, nạp đường dẫn lỗi rồi tiếp tục ván, Restart, chuyển sang `3x3_01_easy`, hoàn thành và quay lại danh sách. Đã mở thẳng `5x5_03_hard` qua tham số CLI và kiểm tra CLI trở về selector khi đường dẫn sai.
+- **Referee thật, SDL dummy.** Dùng `3x3_02_easy` với Agent inject trực tiếp vào Engine. GUI trả `NOT_PROVABLE` cho lựa chọn đúng nhưng chưa chứng minh được, `CONTRADICTED` khi chứng minh được trạng thái ngược lại và `ACCEPTED` khi kết luận được chứng minh. Chỉ trường hợp cuối mở thẻ.
+- **Fixture.** Các test đạt đã kiểm tra thư mục trống/thiếu, quét lại khi có file mới, JSON lỗi/đã xóa vẫn giữ ván, phân trang qua 30 tên, chuyển giữa fixture 3×3 và 4×4, nạp ngoài danh sách và nhập đường dẫn dự phòng với hộp thoại giả lập. Fixture trong bộ nhớ dùng để vẽ đủ ba kích thước.
+- **Ranh giới dữ liệu.** Lượt kiểm tra chơi tay với file thật chạy trong tiến trình Python mới. Sau các nước đi, `sys.modules` không có `solver` hoặc `solver.*`, và SHA-256 của cả 15 file JSON giữ nguyên.
+- **Phạm vi trực quan.** Lần rà soát này dùng driver SDL dummy. Cửa sổ tương tác, hộp thoại chọn file của hệ điều hành và độ dễ đọc của clue dài khi cuộn chưa được kiểm chứng trực tiếp.
 
 ## 8. Quy cách bài nộp và việc còn lại
 
@@ -370,4 +317,4 @@ StudentID1_StudentID2_.../
 - Video dùng Google Drive, cho phép bất kỳ ai có liên kết xem được; kiểm tra bằng cửa sổ riêng tư/ẩn danh. Không nộp liên kết YouTube.
 - Đề nêu thời lượng khoảng ba tuần nhưng không ghi ngày hết hạn cụ thể; cần đối chiếu thông báo học phần.
 
-Ưu tiên tiếp theo là hoàn thiện CNF và DPLL, xây Agent chứng minh từng nước đi, tích hợp GUI, rồi thực nghiệm trên nhiều puzzle 3×3/4×4 để có dữ liệu cho báo cáo và video.
+Các việc còn lại trước khi nộp gồm nối chế độ chứng minh, Hint và Auto Solve vào GUI, cập nhật tên fixture trong các test, và rà soát hai puzzle có nhiều nghiệm khi xét riêng toàn bộ clue. Thực nghiệm cần tổng hợp số biến chính/phụ, số mệnh đề, tổng số lần gọi SAT, decisions/propagations/backtracks, số bước suy luận và thời gian. Dùng cùng bộ puzzle cho các phương án so sánh và ghi nhận trường hợp thất bại hoặc timeout. Báo cáo và video cần dựa trên ứng dụng đã tích hợp và kết quả thực nghiệm.
