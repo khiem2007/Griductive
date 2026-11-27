@@ -38,6 +38,7 @@ class Theme:
     muted: Color
     accent: Color
     highlight: Color
+    related_border: Color
     button: Color
     button_disabled: Color
     success: Color
@@ -55,6 +56,7 @@ _DARK_THEME = Theme(
     muted=(170, 181, 202),
     accent=(84, 156, 255),
     highlight=(250, 199, 72),
+    related_border=(250, 199, 72),
     button=(66, 82, 116),
     button_disabled=(52, 57, 70),
     success=(104, 211, 145),
@@ -72,6 +74,7 @@ _LIGHT_THEME = Theme(
     muted=(119, 106, 94),
     accent=(42, 119, 70),
     highlight=(143, 91, 0),
+    related_border=(139, 55, 235),
     button=(232, 222, 205),
     button_disabled=(239, 233, 222),
     success=(21, 109, 57),
@@ -109,7 +112,7 @@ class GriductiveApp:
         self,
         game: ProofGame,
         load_puzzle: LoadCallback,
-        initial_message: str = "Chọn một màn để bắt đầu.",
+        initial_message: str = "",
         window_size: tuple[int, int] = (1280, 820),
         list_levels: LevelListCallback | None = None,
         load_level: LoadCallback | None = None,
@@ -135,7 +138,9 @@ class GriductiveApp:
         self._active_clue_cell: str | None = None
         self._highlighted_cells: set[str] = set()
         self._clue_scroll = 0
-        self._message = initial_message
+        self._message = (
+            "" if initial_message == "Chọn một màn rồi bấm Chơi." else initial_message
+        )
         self._message_color = self._colors.muted
         self._card_rects: dict[str, pygame.Rect] = {}
         self._buttons: dict[str, pygame.Rect] = {}
@@ -297,6 +302,12 @@ class GriductiveApp:
 
         previous = self._colors
         self._colors = _LIGHT_THEME if previous is _DARK_THEME else _DARK_THEME
+        if self._active_clue_cell is not None:
+            old_name = "vàng" if previous is _DARK_THEME else "tím"
+            self._message = self._message.replace(
+                f"Viền {old_name}: ô được nhắc đến.",
+                f"Viền {self._related_border_name()}: ô được nhắc đến.",
+            )
         for role in ("muted", "success", "error", "highlight"):
             if self._message_color == getattr(previous, role):
                 self._message_color = getattr(self._colors, role)
@@ -309,6 +320,7 @@ class GriductiveApp:
         rect = self._theme_button_rect()
         label = "Sáng" if self._colors is _DARK_THEME else "Tối"
         pygame.draw.rect(self._screen, self._colors.button, rect, border_radius=8)
+        pygame.draw.rect(self._screen, self._colors.muted, rect, 1, border_radius=8)
         text = self._body_font.render(label, True, self._colors.text)
         self._screen.blit(text, text.get_rect(center=rect.center))
 
@@ -321,7 +333,7 @@ class GriductiveApp:
         self._selected_cell = None
         self._buttons.clear()
         self._card_rects.clear()
-        self._set_message("Chọn một màn rồi bấm Chơi.", self._colors.muted)
+        self._set_message("", self._colors.muted)
         self._refresh_levels()
 
     def select_level(self, name: str) -> None:
@@ -372,8 +384,14 @@ class GriductiveApp:
             self._level_names = ()
             self._set_message("Không đọc được danh sách màn trong puzzles/.", self._colors.error)
 
+    def _level_list_rect(self) -> pygame.Rect:
+        """Reserve a separate area above pagination and action controls."""
+
+        width, height = self._screen.get_size()
+        return pygame.Rect(40, 110, width - 80, max(0, height - 260))
+
     def _levels_per_page(self) -> int:
-        return max(1, (self._screen.get_height() - 300) // 52)
+        return max(1, (self._level_list_rect().height + 8) // 52)
 
     def _change_level_page(self, delta: int) -> None:
         last_page = max(0, (len(self._level_names) - 1) // self._levels_per_page())
@@ -414,8 +432,9 @@ class GriductiveApp:
             clue = state.revealed[cell_id][1]
             self._highlighted_cells = clue_cells(clue, state.size)
             self._set_message(
-                f"Gợi ý từ {cell_id}: {len(self._highlighted_cells)} ô liên quan. "
-                "Viền vàng: ô được nhắc đến. Esc: bỏ chọn.",
+                f"Gợi ý từ {cell_id}: {len(self._highlighted_cells)} ô liên quan.\n"
+                f"Viền {self._related_border_name()}: ô được nhắc đến.\n"
+                "Esc: bỏ chọn.",
                 self._colors.highlight,
             )
         else:
@@ -430,6 +449,9 @@ class GriductiveApp:
         self._active_clue_cell = None
         self._highlighted_cells.clear()
         self._clue_scroll = 0
+
+    def _related_border_name(self) -> str:
+        return "vàng" if self._colors is _DARK_THEME else "tím"
 
     def submit_selected(self, claimed: Verdict) -> MoveResult | None:
         """Submit the selected claim using proof-based checking."""
@@ -741,10 +763,7 @@ class GriductiveApp:
 
     def _draw_header(self, side_left: int) -> None:
         title = self._title_font.render("GRIDUCTIVE", True, self._colors.text)
-        mode_label = "Suy luận — kết luận có chứng minh"
-        mode = self._body_font.render(mode_label, True, self._colors.highlight)
         self._screen.blit(title, (28, 18))
-        self._screen.blit(mode, (28, 52))
         if self._current_level_name:
             name = self._fit_text(self._current_level_name, self._body_font, side_left - 260)
             self._screen.blit(self._body_font.render(name, True, self._colors.muted), (240, 29))
@@ -765,28 +784,39 @@ class GriductiveApp:
         self._change_level_page(0)
         per_page = self._levels_per_page()
         start = self._level_page * per_page
+        list_area = self._level_list_rect()
         for index, name in enumerate(self._level_names[start:start + per_page]):
-            rect = pygame.Rect(40, 110 + index * 52, width - 80, 44)
+            rect = pygame.Rect(list_area.x, list_area.y + index * 52, list_area.width, 44)
             self._level_rects[name] = rect
             pygame.draw.rect(self._screen, self._colors.panel, rect, border_radius=8)
-            if name == self._selected_level:
-                pygame.draw.rect(self._screen, self._colors.accent, rect, 2, border_radius=8)
+            selected = name == self._selected_level
+            border = self._colors.accent if selected else self._colors.muted
+            pygame.draw.rect(self._screen, border, rect, 3 if selected else 1, border_radius=8)
             label = self._fit_text(name, self._heading_font, rect.width - 30)
             self._screen.blit(self._heading_font.render(label, True, self._colors.text), (rect.x + 15, rect.y + 10))
 
+        last_row_bottom = max(
+            (rect.bottom for rect in self._level_rects.values()),
+            default=list_area.y,
+        )
+        controls_y = last_row_bottom + 20
+        action_width = 160 if width >= 1100 else 140
         self._buttons = {
-            "previous": pygame.Rect(40, height - 218, 130, 40),
-            "next": pygame.Rect(180, height - 218, 130, 40),
-            "play": pygame.Rect(width - 260, height - 158, 220, 44),
+            "previous": pygame.Rect(40, controls_y, 130, 44),
+            "next": pygame.Rect(180, controls_y, 130, 44),
+            "play": pygame.Rect(width - 40 - action_width, controls_y, action_width, 44),
         }
         pages = max(1, (len(self._level_names) + per_page - 1) // per_page)
         self._draw_button("previous", "Trang trước", self._level_page > 0)
         self._draw_button("next", "Trang sau", self._level_page + 1 < pages)
         label = f"Trang {self._level_page + 1}/{pages} · {len(self._level_names)} màn"
-        self._screen.blit(self._body_font.render(label, True, self._colors.muted), (330, height - 208))
+        page_label = self._body_font.render(label, True, self._colors.muted)
+        self._screen.blit(page_label, (330, controls_y + (44 - page_label.get_height()) // 2))
         self._draw_button("play", "Chơi", self._selected_level is not None)
         if self._game.get_public_state().size:
-            self._buttons["resume"] = pygame.Rect(width - 500, height - 158, 220, 44)
+            self._buttons["resume"] = pygame.Rect(
+                width - 52 - action_width * 2, controls_y, action_width, 44
+            )
             self._draw_button("resume", "Tiếp tục ván", True)
         lines = self._wrap_text(self._message, self._body_font, width - 80)
         for index, line in enumerate(lines[:3]):
@@ -794,7 +824,7 @@ class GriductiveApp:
                 line = self._fit_text(line + " …", self._body_font, width - 80)
             self._screen.blit(
                 self._body_font.render(line, True, self._message_color),
-                (40, height - 90 + index * 22),
+                (40, controls_y + 60 + index * 22),
             )
 
     def _draw_empty_state(self, side_left: int, height: int) -> None:
@@ -856,14 +886,16 @@ class GriductiveApp:
 
         border = self._colors.card_border
         width = 2
-        if cell_id in self._highlighted_cells or cell_id == self._hint_cell:
+        if cell_id == self._hint_cell:
             border, width = self._colors.highlight, 5
+        if cell_id in self._highlighted_cells:
+            border, width = self._colors.related_border, 5
         if cell_id in {self._selected_cell, self._active_clue_cell}:
             border, width = self._colors.accent, 5
         pygame.draw.rect(self._screen, border, rect, width, border_radius=10)
         if cell_id == self._active_clue_cell and cell_id in self._highlighted_cells:
             pygame.draw.rect(
-                self._screen, self._colors.highlight, rect.inflate(-12, -12), 3, border_radius=6
+                self._screen, self._colors.related_border, rect.inflate(-12, -12), 3, border_radius=6
             )
 
         padding = max(7, rect.width // 18)
@@ -991,9 +1023,6 @@ class GriductiveApp:
         self._draw_button("auto", auto_label, can_solve)
         self._draw_button("trace", f"Xem trace ({len(self._trace)} bước)", bool(state.size))
         y = 260
-        label = self._small_font.render("Feedback", True, self._colors.muted)
-        self._screen.blit(label, (x, y))
-        y += 24
         for line in self._wrap_text(self._message, self._body_font, panel_width):
             surface = self._body_font.render(line, True, self._message_color)
             self._screen.blit(surface, (x, y))
@@ -1027,7 +1056,7 @@ class GriductiveApp:
                 self._screen.blit(surface, (x, y + index * 22 - self._clue_scroll))
             self._screen.set_clip(previous_clip)
             for index, text in enumerate((
-                "Xanh: thẻ gợi ý · Vàng: ô liên quan",
+                f"Viền {self._related_border_name()}: ô liên quan",
                 "Cuộn: đọc gợi ý · Esc: bỏ khoanh vùng",
             )):
                 surface = self._small_font.render(text, True, self._colors.muted)
@@ -1125,6 +1154,7 @@ class GriductiveApp:
         pygame.draw.rect(
             self._screen, self._colors.button if enabled else self._colors.button_disabled, rect, border_radius=8
         )
+        pygame.draw.rect(self._screen, self._colors.muted, rect, 1, border_radius=8)
         text = self._body_font.render(label, True, self._colors.text if enabled else self._colors.muted)
         self._screen.blit(text, text.get_rect(center=rect.center))
 
@@ -1138,19 +1168,23 @@ class GriductiveApp:
 
     @staticmethod
     def _wrap_text(text: str, font: pygame.font.Font, width: int) -> list[str]:
-        words = text.split()
-        if not words:
-            return [""]
+        """Wrap each paragraph while preserving explicit line breaks."""
+
         lines: list[str] = []
-        current = words[0]
-        for word in words[1:]:
-            candidate = f"{current} {word}"
-            if font.size(candidate)[0] <= width:
-                current = candidate
-            else:
-                lines.append(current)
-                current = word
-        lines.append(current)
+        for paragraph in text.split("\n"):
+            words = paragraph.split()
+            if not words:
+                lines.append("")
+                continue
+            current = words[0]
+            for word in words[1:]:
+                candidate = f"{current} {word}"
+                if font.size(candidate)[0] <= width:
+                    current = candidate
+                else:
+                    lines.append(current)
+                    current = word
+            lines.append(current)
         return lines
 
     def _set_message(self, message: str, color: Color) -> None:

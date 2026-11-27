@@ -1,4 +1,3 @@
-"""Launch the Griductive manual-practice GUI."""
 
 from __future__ import annotations
 
@@ -78,7 +77,6 @@ def create_app(
 
 
 def main() -> int:
-    """Open the level selector, or directly play the optional JSON path."""
 
     args = _parse_args()
     app = create_app(args.puzzle)
